@@ -1,0 +1,7 @@
+*.dat
+*.o
+*.mod
+*.out
+.vscode/
+
+Makefile
