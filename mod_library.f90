@@ -1,4 +1,3 @@
-
 module library
   Implicit None
 
@@ -16,7 +15,7 @@ module library
   integer, parameter        :: dim_prob = size(nodes,2)-1 !dimension del problema
 
   real, allocatable, dimension(:,:) :: gauss_points, gauss_weights !Verificar si debe ser global---> Si, se usa en la funcion ComputeK
-  real, allocatable, dimension(:,:) :: N, Nx, Ny
+  ! real, allocatable, dimension(:,:) :: N, Nx, Ny
   real, dimension(Nne,dim_prob)     :: element_nodes
   integer, dimension(Nne,1)         :: node_id_map
 
@@ -26,6 +25,7 @@ module library
   contains
 
     subroutine ReadRealFile(UnitNum, FileName, NumRows, NumCols, Real_Array)
+      implicit none
 
       integer :: i, j, status, UnitNum, NumRows, NumCols
       character (len=*), intent (in) :: FileName
@@ -44,7 +44,8 @@ module library
 
     subroutine ReadIntegerFile(UnitNum, FileName, NumRows, NumCols, IntegerArray)
 
-      integer :: i, j, status, UnitNum, NumRows, NumCols
+      integer :: i, j, status
+      integer, intent(in)            :: UnitNum, NumRows, NumCols
       character (len=*), intent (in) :: FileName
       integer, dimension (1:NumRows, 1:NumCols), intent (out) :: IntegerArray
 
@@ -54,7 +55,7 @@ module library
       ! read in values
       read(UnitNum,*) ((IntegerArray(i,j), j=1,NumCols), i=1,NumRows)
       print *, "Status_Int_File  ", status
-
+      print*, "Shape of ",FileName," is", shape(IntegerArray)
       close (UnitNum)
 
     end subroutine
@@ -187,42 +188,39 @@ module library
 
     end subroutine CompNDNatPointsQuad8
 
-    subroutine SetElementNodes(elm_num, element_nodes, node_id_map)
-
+    subroutine SetElementNodes(elm_num, elements, nodes, element_nodes, node_id_map)
       implicit none
 
-      ! integer, dimension(100,9), intent(in):: elements
-      ! real, dimension(341,3), intent(in):: nodes
-      integer,intent(in) :: elm_num ! number of element for each elemental integral in the main do ok K global
-      real, dimension(Nne,dim_prob), intent(out) ::  element_nodes
+      integer, dimension(100,9),  intent(in)::  elements
+      real, dimension(341,3), intent(in)    ::  nodes
+      integer,intent(in)                    :: elm_num ! number of element for each elemental integral in do of K global
+      real, dimension(Nne,dim_prob), intent(out) :: element_nodes
       integer, dimension(Nne,1), intent(out)     :: node_id_map
+      integer                               :: i,j, global_node_id
 
-      integer :: i,j, global_node_id
-
-
-      element_nodes = 0
-      node_id_map = 0
+      element_nodes = 0.0
+      node_id_map = 0.0
 
       do i = 1, Nne
         global_node_id = elements(elm_num,i+1)
         do j=1 ,dim_prob
           element_nodes(i,j) = nodes(global_node_id,j+1)
         end do
-        node_id_map(i,1) = global_node_id;
+        node_id_map(i,1) = global_node_id
       end do
 
     end subroutine SetElementNodes
 
-    function J2D( Nx, Ny, Gp) result(Jacobian)
+    function J2D( element_nodes, Nx, Ny, Gp)
       implicit none
 
-      ! real, dimension(Nne,dim_prob), intent(in)            :: element_nodes
+      real, dimension(Nne,dim_prob), intent(in)            :: element_nodes
       real, dimension(Nne,size(gauss_points) ), intent(in) :: Nx, Ny
-      integer, intent(in)                                                  :: Gp !esta variable se usara en el lazo principal con el numero de punto de gauss para evaluar las integrales elementales
+      integer, intent(in)                                  :: Gp !esta variable se usara en el lazo principal con el numero de punto de gauss para evaluar las integrales elementales
       real, dimension(dim_prob,Nne)                        :: Basis2D
       real, dimension(1,Nne)                               :: Nxi, Neta
-      ! real, dimension(dim_prob,dim_prob)                                   :: J2D
-      real, dimension(dim_prob,dim_prob)                                   :: Jacobian
+      real, dimension(dim_prob,dim_prob)                   :: J2D
+
 
       !con estas instrucciones extraigo la columna de Nx como renglon y lo guardo en Nxi, Gp se
       !ira moviendo conforme la funcion J2D sea llamada en el lazo principal para cada elemento lo mismo para Neta con Ny
@@ -232,7 +230,7 @@ module library
       Basis2D(1,:) = Nxi(1,:)
       Basis2D(2,:) = Neta(1,:)
 
-      Jacobian = matmul(Basis2D,element_nodes)
+      J2D = matmul(Basis2D,element_nodes)
 
       ! J = J2D
 
@@ -252,12 +250,12 @@ module library
       return
     end function J2D
 
-    function inv2x2(A)  result(Jinv)
+    function inv2x2(A)
 
       implicit none
 
-      real, dimension(dim_prob,dim_prob), intent(in)       :: A
-      real, dimension(dim_prob,dim_prob)     :: Jinv
+      real, dimension(dim_prob,dim_prob), intent(in)  :: A
+      real, dimension(dim_prob,dim_prob)              :: inv2x2
 
       double precision, parameter :: EPS = 1.0E-10
       real :: det
@@ -267,7 +265,7 @@ module library
       det =   A(1,1)*A(2,2) - A(1,2)*A(2,1)
 
       if (abs(det) .le. EPS) then
-        Jinv = 0.0D0
+        inv2x2 = 0.0D0
         return
       end IF
 
@@ -276,7 +274,7 @@ module library
       cofactor(2,1) = -A(1,2)
       cofactor(2,2) = +A(1,1)
 
-      Jinv = transpose(cofactor) / det
+      inv2x2 = transpose(cofactor) / det
 
       return
 
@@ -395,82 +393,82 @@ module library
 
     end function AssembleK
 
-    ! subroutine GlobalK( A_K ) !Al tener un solo parametro de salida puedo declararla como funcion
+    subroutine GlobalK( A_K, Nx, Ny) !Al tener un solo parametro de salida puedo declararla como funcion
 
-    !   implicit none
+      implicit none
 
-    !   !- - - * * * DUDA * * * - - -
+      !- - - * * * DUDA * * * - - -
 
-    !     !Esto ya estaba como variable global, por que edebo declararlo de nuevo aqui
-    !     ! real                      :: materials
-    !     ! real, dimension(341,3)    :: nodes
-    !     ! integer, dimension(100,9) :: elements
-    !     ! real, dimension(341,2)    :: pnodes
-    !     ! integer, dimension(100,5) :: pelements
+        !Esto ya estaba como variable global, por que edebo declararlo de nuevo aqui
+        ! real                      :: materials
+        ! real, dimension(341,3)    :: nodes
+        ! integer, dimension(100,9) :: elements
+        ! real, dimension(341,2)    :: pnodes
+        ! integer, dimension(100,5) :: pelements
 
-    !     ! ----> Pide declararlo porque lo estoy ponioendo como argumento de entrada en la subrutina, sino lo pongo entonces dentro de la subrutina
-    !     ! lo toma de la parte global donde ha sido declarado
-
-
-
-    !     ! n_nodes               Ya declarado como variable global
-    !     ! n_pnodes              Ya declarado como variable global
-    !     ! n_elements            Ya declarado como variable global
-    !     ! Nne   Ya declarado como variable global
-    !   !- - - * * * * * * * * * - - -
-
-    !   real, allocatable, dimension(:,:)       :: K
-    !   real, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(out) :: A_K!Global Stiffnes matrix
-    !   ! real, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes) :: AssembleK
-
-    !   real, dimension(2*Nne, 2*Nne)           :: ke
-    !   real, dimension(dim_prob, dim_prob)     :: Jaco, Jinv
-    !   real, dimension(3,3)                    :: cc, C
-    !   real, dimension(2*dim_prob, 2*dim_prob) :: Jb
-    !   real, dimension(4,2*Nne)                :: B
-    !   real, dimension(3,dim_prob*dim_prob)    :: HJ
-    !   real, dimension(3,2*Nne)                :: HJB
-    !   real, dimension(2*Nne,3)                :: HJB_T
-    !   real, dimension(3,4)                    :: H
-    !   real                                    :: detJ
-    !   integer                                 :: gp, ngp, e
-
-    !   allocate(K(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes) )
-
-    !   K  = 0.0
-    !   cc = reshape([2, 0, 0, 0, 2, 0, 0, 0, 1],[3,3])
-    !   C  = materials * cc
-    !   H  = CompH()
-    !   ngp= size(gauss_points,1) !TMB PODRIA SER VARIABLE PERMANENTE CON SAVE
-
-    !   !elements loop
-    !   do e = 1, n_nodes
-    !     ke = 0
-    !     Jb = 0
-    !     call SetElementNodes(e, elements, nodes, element_nodes, node_id_map)
-    !     !do-loop: compute element stiffness matrix ke
-    !     do gp  = 1, ngp
-    !       Jaco = J2D(element_nodes, Nx, Ny, gp)
-    !       detJ = m22det(Jaco)
-    !       Jinv = inv2x2(Jaco)
-    !       Jb   = buildJb (Jinv)
-    !       B    = compBmat( Nx, Ny, gp)
-    !       HJ   = matmul(H,Jb)
-    !       HJB  = matmul(HJ,B)
-    !      HJB_T = transpose(HJB)
-    !      print*, shape(HJB_T)
-    !      !aqui marcaba error por que gauss_weights es un vector columna y debe indicarse con dos indices
-    !      ke = 1 !ke + HJB_T * C * HJB * detJ * gauss_weights(gp,1)
-    !     end do
-
-    !     A_K = AssembleK(K, ke, 2) ! assemble global K
-
-    !   end do
-
-    ! end subroutine GlobalK
+        ! ----> Pide declararlo porque lo estoy ponioendo como argumento de entrada en la subrutina, sino lo pongo entonces dentro de la subrutina
+        ! lo toma de la parte global donde ha sido declarado
 
 
 
+        ! n_nodes               Ya declarado como variable global
+        ! n_pnodes              Ya declarado como variable global
+        ! n_elements            Ya declarado como variable global
+        ! Nne   Ya declarado como variable global
+      !- - - * * * * * * * * * - - -
+
+      real, allocatable, dimension(:,:)       :: K
+      real, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(out) :: A_K!Global Stiffnes matrix
+      real, dimension(Nne,size(gauss_points,1)), intent(in)      :: Nx, Ny
+      real, dimension(2*Nne, 2*Nne)           :: ke
+      real, dimension(dim_prob, dim_prob)     :: Jaco, Jinv
+      real,  dimension(3,3)                    :: cc, C
+      real, dimension(2*dim_prob, 2*dim_prob) :: Jb
+      real, dimension(4,2*Nne)                :: B
+      real, dimension(3,dim_prob*dim_prob)    :: HJ
+      real, dimension(3,2*Nne)                :: HJB
+      real, dimension(2*Nne,3)                :: HJB_T
+      real, dimension(3,4)                    :: H
+      real, dimension(16,3)                   :: part1
+      real, dimension(16,16)                  :: part2
+      real, dimension(16,16)                  :: part3
+      real                                    :: detJ
+      integer                                 :: gp, ngp, e
+
+      allocate(K(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes) )
+      ! allocate(gauss_points(Nne,4))
+      K  = 0.0
+      cc = reshape([2, 0, 0, 0, 2, 0, 0, 0, 1],[3,3])
+      C  = materials * cc
+      H  = CompH()
+      ngp= 4!size(gauss_points,1) !TMB PODRIA SER VARIABLE PERMANENTE CON SAVE
+      !elements loop
+      do e = 1, n_elements
+        ke = 0
+        Jb = 0
+        call SetElementNodes(e, elements, nodes, element_nodes, node_id_map)!<--- Here is the possible error
+        !do-loop: compute element stiffness matrix ke
+        do gp  = 1, ngp
+          Jaco = J2D(element_nodes, Nx, Ny, gp)
+          detJ = m22det(Jaco)
+          Jinv = inv2x2(Jaco)
+          Jb   = buildJb (Jinv)
+          B    = compBmat( Nx, Ny, gp)
+          HJ   = matmul(H,Jb)
+          HJB  = matmul(HJ,B)
+         HJB_T = transpose(HJB)
+         part1 = matmul(HJB_T,C)
+         part2 = matmul(part1,HJB)
+         part3 = part2 * detJ
+         !aqui marcaba error por que gauss_weights es un vector columna y debe indicarse con dos indices
+         ke = ke + part3 * gauss_weights(gp,1)
+        end do
+
+        A_K = AssembleK(K, ke, 2) ! assemble global K
+
+      end do
+
+    end subroutine GlobalK
 
 
 

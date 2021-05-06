@@ -3,10 +3,11 @@ program Stokes
 
   implicit none
 
-  
-  integer ::  el_num, Gp !Estas variables declaradas solo son de prueba para ir testeando la funcionalidad del codigom, se cambiaran por el bucle principal en compK
+
+  integer :: i,j,  el_num, Gp !Estas variables declaradas solo son de prueba para ir testeando la funcionalidad del codigom, se cambiaran por el bucle principal en compK
   real, allocatable, dimension(:,:) :: A_K
-  ! real, allocatable, dimension(:,:) :: N, Nx, Ny
+  real, allocatable, dimension(:,:) :: N, Nx, Ny
+
   ! real, dimension(2,2) :: Jaco
 
 ! - - - - - Aqui declaro funciones para ir probando el codigo
@@ -26,15 +27,15 @@ program Stokes
   call ReadIntegerFile(50,"pelements.dat", 100,5, pelements)
   call GetQuadGauss(2,2,gauss_points, gauss_weights)
 
-  ! allocate(N(Nne,size(gauss_points,1)),Nx(Nne,size(gauss_points,1)) ,Ny(Nne,size(gauss_points,1)) )
-  
+  allocate( N(Nne,size(gauss_points,1)),Nx(Nne,size(gauss_points,1)) ,Ny(Nne,size(gauss_points,1)) )
+
   call CompNDNatPointsQuad8(gauss_points, N, Nx, Ny)
 
-
   allocate(A_K(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes))
+  
 
   el_num = 1
-  call SetElementNodes(el_num, element_nodes, node_id_map)
+  call SetElementNodes(el_num, elements, nodes, element_nodes, node_id_map)
 
   Gp = 1
   ! Jaco = J2D( Nx, Ny, Gp)
@@ -49,14 +50,16 @@ program Stokes
   ! HJ = matmul(MatH,Jb)
   ! HJB = matmul(HJ,B)
 
-  ! call GlobalK( A_K )
+  call GlobalK( A_K, Nx, Ny)
 
-  print*,' '
-  print*,'shape de Global Stiffnes Matrix',shape(A_K)
-  print*,' '
-  ! do i =1 ,3
-  !   print*, HJB_T(i,:)
-  ! end do
+
+
+  do i =1,100
+    print*, A_K(i,1)
+  end do
+
+  
+
 
 
 
