@@ -3,5 +3,6 @@
 *.mod
 *.out
 .vscode/
-
+stks.txt
 Makefile
+Ds_Store/

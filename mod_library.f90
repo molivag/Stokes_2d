@@ -6,18 +6,16 @@ module library
   real                      :: materials
   real, dimension(341,3)    :: nodes
   integer, dimension(100,9) :: elements
-  real, dimension(341,2)    :: pnodes
+  integer, dimension(341,2) :: pnodes
   integer, dimension(100,5) :: pelements
   integer, parameter        :: n_nodes = size(nodes,1)
   integer, parameter        :: n_pnodes = 121 !Duda, como lo tomo desde el txt es decir   n_pnodes = maxval(pnodes(:,2))
   integer, parameter        :: n_elements = size(elements,1)
-  integer, parameter        :: Nne = size(elements,2)-1
+  integer, parameter        :: Nne = size(elements,2)-1     !Number of nodes in the element
+  integer, parameter        :: Npne = size(pelements,2)-1   !Number of pnodes in the eleement
   integer, parameter        :: dim_prob = size(nodes,2)-1 !dimension del problema
 
   real, allocatable, dimension(:,:) :: gauss_points, gauss_weights !Verificar si debe ser global---> Si, se usa en la funcion ComputeK
-  ! real, allocatable, dimension(:,:) :: N, Nx, Ny
-  real, dimension(Nne,dim_prob)     :: element_nodes
-  integer, dimension(Nne,1)         :: node_id_map
 
   ! ! ! Fin de variables globales ! ! !
 
@@ -119,6 +117,9 @@ module library
         end do                            !mientras que en matlab solo con escribir (n)
       end do
 
+
+      ! Aqui puedo poner un ngp = size(gauss_points,1) ! y declarar ngp con SAVE para tener siempre el valor de la variable ngp 
+
       DEALLOCATE(w1, w2, x, w)
       !Esta funcion no afecta al resultado pues se ha liberado la memoria para calcular pesos y puntos
       !de Gauss mas no las variables que contienen pesos y puntos de gauus.
@@ -188,6 +189,44 @@ module library
 
     end subroutine CompNDNatPointsQuad8
 
+    subroutine CompNDNatPointsQuad4(gauss_points, Np)
+      implicit none
+
+      real, dimension(:,:), intent(in) :: gauss_points
+      real, allocatable, dimension(:,:), intent(out) :: Np
+      real, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
+      integer, dimension(Npne,dim_prob) :: master_nodes
+      real    :: xi, eta, mn_xi, mn_eta
+      integer :: ngp, i, j
+
+      ngp = size(gauss_points,1) 
+      !number of gauss points
+      ! esta puede quedar como variable global si se usa en alguna otra subrutina
+                                ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
+      allocate( Np(Npne,ngp))
+
+      Np  = 0.0
+      xi_vector  = gauss_points(:,1)     ! xi-coordinate of point j
+      eta_vector = gauss_points(:,2)
+
+      !coordinates of the nodes of the master element
+      master_nodes = reshape([1, -1, -1, 1, 1, 1, -1, -1], [Npne,dim_prob])
+      !NOTA ** Para que el reshape funcione correctamente, o que produzca el par de valores deseado, primero se deben
+      !colocar todos los valores en x, luego todos los de y y luego, si hubiera, todos los de z para que al acomodarse salga el par
+      !suponiendo un reshape de 3,2 debe acomodarse x1, x2, x3, y1, y2, y3 DUDA *Siempre debe ser es asi*
+
+      do j = 1, ngp
+        xi  = xi_vector(j)      ! xi-coordinate of point j
+        eta = eta_vector(j)     ! eta-coordinate of point j
+        do i = 1, 4
+          mn_xi = master_nodes(i,1)
+          mn_eta= master_nodes(i,2)
+          Np(i,j)=(1.0 + mn_xi*xi)*(1.0 + mn_eta*eta)/4.0 
+        end do
+      end do
+
+    end subroutine CompNDNatPointsQuad4
+                              
     subroutine SetElementNodes(elm_num, elements, nodes, element_nodes, node_id_map)
       implicit none
 
@@ -197,6 +236,7 @@ module library
       real, dimension(Nne,dim_prob), intent(out) :: element_nodes
       integer, dimension(Nne,1), intent(out)     :: node_id_map
       integer                               :: i,j, global_node_id
+
 
       element_nodes = 0.0
       node_id_map = 0.0
@@ -210,6 +250,30 @@ module library
       end do
 
     end subroutine SetElementNodes
+
+    subroutine PreassureElemNods(elm_num, pelements, nodes, pelement_nodes, pnode_id_map)
+      implicit none
+
+      integer, dimension(100,5),  intent(in)::  pelements
+      real, dimension(341,3), intent(in)    ::  nodes
+      integer,intent(in)                    :: elm_num ! number of element for each elemental integral in do of K global
+      real, dimension(Npne,dim_prob), intent(out) :: pelement_nodes
+      integer, dimension(Npne,1), intent(out)     :: pnode_id_map
+      integer                               :: i,j, global_node_id
+
+
+      pelement_nodes = 0.0
+      pnode_id_map = 0.0
+
+      do i = 1, Npne
+        global_node_id = pelements(elm_num,i+1)
+        do j=1 ,dim_prob
+          pelement_nodes(i,j) = nodes(global_node_id,j+1)
+        end do
+        pnode_id_map(i,1) = global_node_id
+      end do
+
+    end subroutine PreassureElemNods
 
     function J2D( element_nodes, Nx, Ny, Gp)
       implicit none
@@ -365,13 +429,14 @@ module library
 
     end function compBmat
 
-    function AssembleK(K, ke, ndDOF)
+    subroutine AssembleK(K, ke, node_id_map, ndDOF)
 
       implicit none
-      real, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes)  :: K !Global Stiffnes matrix
-      real, dimension(2*Nne, 2*Nne)                            :: ke
-      real, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes)  :: AssembleK
-      integer :: ndDOF, i, j, row_node, row, col_node, col !nodal Degrees of Freedom
+      real(8), dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(in out)  :: K !Global Stiffnes matrix
+      real(8), dimension(2*Nne, 2*Nne), intent(in)    :: ke
+      integer, dimension(Nne,1), intent(in)           :: node_id_map
+      integer, intent(in)                             :: ndDOF 
+      integer :: i, j, row_node, row, col_node, col !nodal Degrees of Freedom
 
       !K debe llevar inout por que entra como variable (IN) pero en esta funcion se modifica (out)
 
@@ -382,7 +447,7 @@ module library
         do j = 1, Nne
           col_node = node_id_map(j,1)
           col = ndDOF*col_node - (ndDOF-1)
-          AssembleK(row:row+ndDOF-1, col:col+ndDOF-1) =  K(row:row+ndDOF-1, col:col+ndDOF-1) + &
+          K(row:row+ndDOF-1, col:col+ndDOF-1) =  K(row:row+ndDOF-1, col:col+ndDOF-1) + &
           ke((i-1)*ndDOF+1:i*ndDOF,(j-1)*ndDOF+1:j*ndDOF)
         enddo
 
@@ -391,7 +456,7 @@ module library
 
       return
 
-    end function AssembleK
+    end subroutine AssembleK
 
     subroutine GlobalK( A_K, Nx, Ny) !Al tener un solo parametro de salida puedo declararla como funcion
 
@@ -417,12 +482,13 @@ module library
         ! Nne   Ya declarado como variable global
       !- - - * * * * * * * * * - - -
 
-      real, allocatable, dimension(:,:)       :: K
-      real, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(out) :: A_K!Global Stiffnes matrix
-      real, dimension(Nne,size(gauss_points,1)), intent(in)      :: Nx, Ny
-      real, dimension(2*Nne, 2*Nne)           :: ke
+      real(8), dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(out) :: A_K  !Global Stiffnes matrix
+      real, dimension(Nne,size(gauss_points,1)), intent(in)               :: Nx, Ny
+      real, allocatable, dimension(:,:)       :: Np
+      real(8), dimension(2*Nne, 2*Nne)           :: ke
       real, dimension(dim_prob, dim_prob)     :: Jaco, Jinv
-      real,  dimension(3,3)                    :: cc, C
+      real                                    :: detJ
+      real,  dimension(3,3)                   :: cc, C
       real, dimension(2*dim_prob, 2*dim_prob) :: Jb
       real, dimension(4,2*Nne)                :: B
       real, dimension(3,dim_prob*dim_prob)    :: HJ
@@ -432,21 +498,36 @@ module library
       real, dimension(16,3)                   :: part1
       real, dimension(16,16)                  :: part2
       real, dimension(16,16)                  :: part3
-      real                                    :: detJ
-      integer                                 :: gp, ngp, e
+      real(8), allocatable, dimension(:,:)     :: K12 !Lo puse allocatable por que marca error en la memoria 
+      ! Array 'k12' at (1) is larger than limit set by '-fmax-stack-var-size=', moved from stack to static storage. This makes the procedure unsafe when called recursively, 
+      !or concurrently from multiple threads. Consider using '-frecursive', or increase the '-fmax-stack-var-size=' limit, or change the code to use an ALLOCATABLE array. [-Wsurprising]
+      real, dimension(16,4)                   :: kep
+      real, dimension(8,2)                    :: part4
+      real, dimension(2,1)                    :: part5
+      real, dimension(2,1)                    :: A
+      real, dimension(4,1)                    :: part6
+      real, dimension(1,4)                    :: part7
+      real, dimension(16,4)                   :: part8
+      real, dimension(4*Npne,1)                 :: dN
+      integer, dimension(Nne,1)               :: node_id_map
+      real, dimension(Nne,dim_prob)           :: element_nodes
+      integer, dimension(Npne,1)              :: pnode_id_map
+      real, dimension(Npne,dim_prob)          :: pelement_nodes
 
-      allocate(K(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes) )
-      ! allocate(gauss_points(Nne,4))
-      K  = 0.0
+      integer                                 :: gp, ngp, e, i,j, row_node, row, col_node, pnode_id, col
+
+      ngp = size(gauss_points,1) !TMB PODRIA SER VARIABLE PERMANENTE CON SAVE
+
+      A_K  = 0.0
       cc = reshape([2, 0, 0, 0, 2, 0, 0, 0, 1],[3,3])
       C  = materials * cc
       H  = CompH()
-      ngp= 4!size(gauss_points,1) !TMB PODRIA SER VARIABLE PERMANENTE CON SAVE
-      !elements loop
+      
+      !elements loop for K1-1 block Global K
       do e = 1, n_elements
         ke = 0
         Jb = 0
-        call SetElementNodes(e, elements, nodes, element_nodes, node_id_map)!<--- Here is the possible error
+        call SetElementNodes(e, elements, nodes, element_nodes, node_id_map)
         !do-loop: compute element stiffness matrix ke
         do gp  = 1, ngp
           Jaco = J2D(element_nodes, Nx, Ny, gp)
@@ -464,12 +545,96 @@ module library
          ke = ke + part3 * gauss_weights(gp,1)
         end do
 
-        A_K = AssembleK(K, ke, 2) ! assemble global K
-
+        call AssembleK(A_K, ke, node_id_map, 2) ! assemble global K
+      
       end do
 
-    end subroutine GlobalK
+      !Setup for K1-2 block
+      ! Npne is declared at the top as parameter
+      allocate (K12(n_nodes*2,n_pnodes))
+      K12 = 0
+      
+      call CompNDNatPointsQuad4(gauss_points, Np)
 
+      do e = 1, n_elements
+        kep = 0.0
+        call SetElementNodes(e, elements, nodes, element_nodes, node_id_map)
+        call PreassureElemNods(e, pelements, nodes, pelement_nodes, pnode_id_map) !--Arreglar esto para que sea con p en todos los arguments
+        ! for-loop: compute element stiffness matrix ke     
+        do gp  = 1, ngp
+          Jaco = J2D(element_nodes, Nx, Ny, gp)
+          detJ = m22det(Jaco)
+          Jinv = inv2x2(Jaco)
+          dN = 0.0
+          do j = 1, Nne
+            part4(j,:) = [ Nx(j,gp), Ny(j,gp) ]  
+            part5 = reshape([part4(j,:)],[2,1])           !--Revisar por que en la linea 514 y 515 si se puede hacer
+            A =  matmul(Jinv,part5)           !Tuve que separar todas las multiplicaciones para que funcione 
+                                              ! pues el resultado de matmul debe guardarse en otra variable, A sino marca error
+            dN(2*j-1:2*j ,1)= A(:,1)          !quiza si necesite dividri la operacion de este matmul
+          end do
+          part6(:,1) = NP(:,gp)
+          part7 = transpose(part6)
+          part8 = matmul(dn,part7)
+          kep = kep + part8 * (detJ*gauss_weights(gp,1)) !----> Verificar si hace falta la parte9 separando part8 * detJ
+        end do  
+      
+        ! for-loop: assemble ke into global Kp
+        do i = 1, Nne
+          
+          row_node = node_id_map(i,1)
+          row = 2*row_node - 1
+          do j = 1, Npne
+            col_node = pnode_id_map(j,1)
+            pnode_id = pnodes(col_node,2)
+            col = pnode_id
+            K12(row:row+1, col) = K12(row:row+1, col) + kep(2*i-1:i*2, j)
+          enddo
+        
+        enddo 
+
+        !Desde aqui
+          ! print*, 'element number', e
+
+          ! if ( e <= 15 ) then
+          !   do i =1,10
+          !     print*, K12(i,e)
+          !   end do    
+          ! else if (e >= 16 .or. e <= 35 )then
+          !     do i = 10,25
+          !     print*,K12(i,e)
+          !     end do
+          ! else if ( e >= 36 .or. e<= 65 )then
+          !   do i = 55,85
+          !     print*,K12(i,e)
+          !     end do
+          !   end if
+                
+          !   print*, ' '
+          !   print*, ' '
+          !   print*, 'pelements_nodes'
+          !   print*, ' '
+          !   do i = 1,Npne
+          !     print*, pelement_nodes(i,:)
+          !   end do
+          !   print*, ' '
+          !   print*, 'pnode_id_map'
+          !   print*, ' '
+          !   do i = 1,Npne
+          !     print*, pnode_id_map(i,:)
+          !   end do
+        !Y hasta aqui para comprobar la matriz K12
+      end do
+
+     
+              
+       
+      end subroutine GlobalK
+
+     
+
+
+  !Fin de contains
 
 
 
