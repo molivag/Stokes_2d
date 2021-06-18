@@ -14,7 +14,7 @@ program Stokes
 
   ! real, dimension(2,2) :: Jaco
 
-! - - - - - Aqui declaro funciones para ir probando el codigo
+  ! - - - - - Aqui declaro funciones para ir probando el codigo
   ! real, dimension(3,4)                          :: MatH
   ! real, dimension(dim_prob,dim_prob)            :: Jaco, Jinv
   ! real, dimension(4,2*n_nodes_per_element)      :: B
@@ -22,7 +22,7 @@ program Stokes
   ! real, dimension(3,dim_prob*dim_prob)          :: HJ
   ! real, dimension(3,2*n_nodes_per_element)      :: HJB
   ! real, dimension(3,2*n_nodes_per_element)     :: matmul3
-! - - - - - Aqui declaro funciones para ir probando el codigo
+  ! - - - - - Aqui declaro funciones para ir probando el codigo
 
   call ReadRealFile(10,"nodes.dat", 341,3, nodes)
   call ReadIntegerFile(20,"elements.dat", 100,9, elements)
@@ -40,12 +40,17 @@ program Stokes
   
   allocate( Fbcsvp(NoBV, NoBVcol) ) !Designo la memoria para la matriz de nodos con valor en la frontera
   call ReadMixFile(60,"Fbcsvp.dat", NoBV, NoBVcol, Fbcsvp)!Llamo el archivo de valores en la frontera y lo guardo en Fbcsvp
-
+  
   call GlobalK( A_K, Nx, Ny)
+  Sv = 0 !initializing source vector (Sv) 
 
-  !initializing source vector (Sv) 
+  !una vez calculada la matriz global y el vector de fuente (Sv), les aplicamos las condiciones de frontera
+  call ApplyBoundCond(A_K, Sv, NoBV, Fbcsvp )
 
-  Sv = 0
+  !Despues de este ultimo call, obtenemos la matriz y vector global con condiciones de frontera
+  ! Aqui entraria el solver, este deberia estar en un modulo distinto
+  
+
 
 
   do i = 445,524
