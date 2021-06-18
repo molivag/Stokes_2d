@@ -2,11 +2,15 @@ program Stokes
   use library
 
   implicit none
-
-
+  ! - - - - - - - - - - * * * Variables que se usan aqui en main * * * * * * * - - - - - - - - - -
+  integer :: NoBV, NoBVcol
+  real, allocatable, dimension(:,:) :: Fbcsvp
+  ! - - - - - - - - - - - - - - - * * * Fin * * * * * * * - - - - - - - - - - - - - - - - 
+  
   integer :: i !Estas variables declaradas solo son de prueba para ir testeando la funcionalidad del codigom, se cambiaran por el bucle principal en compK
   real(8), allocatable, dimension(:,:) :: A_K
   real, allocatable, dimension(:,:) :: N, Nx, Ny
+  real(8), dimension(2*n_nodes+n_pnodes, 1) :: Sv
 
   ! real, dimension(2,2) :: Jaco
 
@@ -32,7 +36,17 @@ program Stokes
 
   allocate(A_K(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes))
   
+  call SetBounCond( NoBV, NoBVcol) !Esta funcion crea el archivo bcsVP.dat
+  
+  allocate( Fbcsvp(NoBV, NoBVcol) ) !Designo la memoria para la matriz de nodos con valor en la frontera
+  call ReadMixFile(60,"Fbcsvp.dat", NoBV, NoBVcol, Fbcsvp)!Llamo el archivo de valores en la frontera y lo guardo en Fbcsvp
+
   call GlobalK( A_K, Nx, Ny)
+
+  !initializing source vector (Sv) 
+
+  Sv = 0
+
 
   do i = 445,524
     print*,A_K(i,453)
