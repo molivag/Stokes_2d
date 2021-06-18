@@ -654,7 +654,7 @@ module library
           !   end do
         !Y hasta aqui para comprobar la matriz K12
       end do
-
+      ! filling the symetric part of K
       A_K(1:2*n_nodes, 2*n_nodes+1:2*n_nodes+n_pnodes) = -K12  
       A_K(2*n_nodes+1:2*n_nodes+n_pnodes, 1:2*n_nodes) = -K12
               
@@ -716,36 +716,39 @@ module library
    
     end subroutine SetBounCond
 
+    subroutine ApplyBoundCond(A_K, Sv, NoBV, Fbcsvp )
+      ! - - - - - - - - - - * * * * * * * * * * - - - - - - - 
+      ! Set velocity (u) and preasure (p) boundary condition by penalty method
+      ! - - - - - - - - - - * * * * * * * * * * - - - - - - - - - -
 
+      implicit none
+      real, dimension(NoBV,3), intent(in) :: Fbcsvp
+      real(8) :: param, coeff
+      real(8), dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(in out) :: A_K  !Global Stiffnes matrix
+      real(8), dimension(2*n_nodes+n_pnodes, 1), intent(in out) :: Sv
+      integer :: preasure_row, NoBV, i, component, node_id, pnode_id
 
-    ! subroutine ApplyBoundCond(A_K, Sv, NoBV, Fbcsvp  )
-    !   ! - - - - - - - - - - * * * * * * * * * * - - - - - - - 
-    !   ! Set velocity (u) and preasure (p) boundary condition by penalty method
-    !   ! - - - - - - - - - - * * * * * * * * * * - - - - - - - - - -
-
-    !   implicit none
-    !   real, dimension(NoBV,3), intent(in) :: Fbcsvp
-    !   real :: coeff
-    !   real, intent(in out) :: A_K, Sv       !-------> Falta declarar la dimension de matriz y vector
-    !   integer :: preasure_row, NoBV, i, component
+      !Esencialmente la siguiente instruccion hace: A_K(1*2-1,:) = A_K(1,:) Es decir, obtene el valor maximo de
+      !la primera fila de la matriz global K (A_K). No le veo el caso pero lo dejamos asi.
+      param = maxval(A_K(int(Fbcsvp(1,1))*2-1,:))
+      coeff = abs(coeff) * 1.0E7
       
-    !   coeff = 2
-    !   preasure_row = 2*n_nodes
+      preasure_row = 2*n_nodes
 
-    !   do i =1, NoBV
-    !     node_id = Fbcsvp(i,1)
-    !     component = Fbcsvp(i,2)
-    !     if ( component .le. 2 ) then
-    !       A_K(2*node_id-2+component, 2*node_id-2 +component) = coeff
-    !       Sv(2*node_id-2+component, 1) = Fbcsvp(i,3)*coeff
-    !     else
-    !       pnode_id = pnodes(node_id,2)
-    !       A_K() = coeff
-    !       Sv() = coeff
-    !     end if
-    !   end do
+      do i =1, NoBV
+        node_id = int(Fbcsvp(i,1)) !se pone este int() pq la 1a y 2a col de Fbcsvp esta leida como integer pero 
+        component = int(Fbcsvp(i,2))!la matriz completa esta declarada como real en esta subroutina y en el main.
+        if ( component .le. 2 ) then
+          A_K(2*node_id-2+component, 2*node_id-2 +component) = coeff
+          Sv(2*node_id-2+component, 1) = Fbcsvp(i,3)*coeff 
+        else                                                     
+          pnode_id = pnodes(node_id,2)
+          A_K(preasure_row+pnode_id, preasure_row + pnode_id) = coeff
+          Sv(preasure_row+pnode_id,1) = Fbcsvp(i,3)*coeff 
+        end if
+      end do
 
-    ! end subroutine ApplyBoundCond
+    end subroutine ApplyBoundCond
   
 
 
