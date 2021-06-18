@@ -56,7 +56,7 @@ module library
       print*, "Shape of ",FileName," is", shape(IntegerArray)
       close (UnitNum)
 
-    end subroutine
+    end subroutine ReadIntegerFile
 
     subroutine ReadReal(UnitNum, FileName, value)
 
@@ -74,6 +74,35 @@ module library
       close (UnitNum)
 
     end subroutine
+
+    
+    subroutine ReadMixlFile(UnitNum, FileName, NumRows, NumCols, Real_Array)
+      implicit none
+
+      ! - - - - - - - - - - * * * * * * * * * * - - - - - - - - - -
+      ! Rutina que lee un conjunto de datos en el formato indicado
+      ! en la etiqueta 22
+      !- - - - - - - - - - * * * * * * * * * * - - - - - - - - - -
+
+      integer :: i, j, status, UnitNum, NumRows, NumCols
+      character (len=*), intent (in) :: FileName
+      real, dimension (1:NumRows, 1:NumCols), intent (out) :: Real_Array
+
+
+      open (unit = UnitNum, file =FileName, status='old', action='read' , iostat = status)
+
+      ! read in values
+      read(UnitNum,22) ((Real_Array(i,j), j=1,NumCols), i=1,NumRows)
+      print *, "Status_Real_File ", status
+
+      22 format(1I3, 1I2, 1F12.10)
+
+      close (UnitNum)
+
+    end subroutine
+
+
+
 
     subroutine GetQuadGauss(fila, columna, gauss_points, gauss_weights)
       implicit none
@@ -626,12 +655,98 @@ module library
         !Y hasta aqui para comprobar la matriz K12
       end do
 
-     
+      A_K(1:2*n_nodes, 2*n_nodes+1:2*n_nodes+n_pnodes) = -K12  
+      A_K(2*n_nodes+1:2*n_nodes+n_pnodes, 1:2*n_nodes) = -K12
               
        
-      end subroutine GlobalK
+    end subroutine GlobalK
 
+    subroutine SetBounCond( NoBV, NoBVcol )
+      ! - - - - - - - - - - - - - - * * * * * * * * * * - - - - - - - - - - - - - -
+      !Esta subroutina revisa todos los nodos de la malla y asigna valores 
+      !en la frontera para aquellos nodos localizados en ella. Abre un archivo 
+      !en donde comenzara a escribir, en la primer columna: el numero de nodo. 
+      ! La segunda columna tendra la condicion de fronntera
+      ! 1 = ux (componente x de la velocidad) 
+      ! 2 = uy (componente y de la velocidad) 
+      ! 3 = para la presion 
+      !La tercera columna asigna el valor correspondiente de la condicion de forntera
+      !- - - - - - - - - - - - - - * * * * * * * * * * - - - - - - - - - - - - - - -
+      implicit none
+
+      real, dimension(341,3)    :: nodes
+      integer, parameter        :: n_nodes = size(nodes,1)
+      integer :: i, ierror, a ,b, c, d, e
+      integer, intent(out) :: NoBV, NoBVcol
+      real :: x, y
+
+      call ReadRealFile(10,"nodes.dat", 341,3, nodes)
+      !inicializamos los contadores
+      a = 0
+      b = 0
+      c = 0
+      d = 0
+      e = 0 
+      
+      open(unit=100, file='Fbcsvp.dat',Status= 'replace', action= 'write',iostat=ierror)
+      NoBVcol = size(nodes,2)     
      
+      do i =1,n_nodes
+        x=nodes(i,2)
+        y=nodes(i,3)
+        if(y .eq. 1.0) then
+            write(100,50) i, 1, 1.0
+            write(100,50) i, 2, 0.0
+            a=a+1
+            b=b+1
+        else if(x .eq. 0.0)then
+            write(100,50) i,3,0.0
+            c=c+1
+        else if (x .eq.0.0 .or. y.eq.0.0 .or. x.eq.1.0)then
+            write(100,50) i, 1, 0.0
+            write(100,50) i, 2, 0.0
+            d=d+1
+            e=e+1
+        end if
+        NoBV = a+b+c+d+e
+      end do
+
+      close(100)
+      50 format(2I3,' ', F13.10)
+   
+    end subroutine SetBounCond
+
+
+
+    ! subroutine ApplyBoundCond(A_K, Sv, NoBV, Fbcsvp  )
+    !   ! - - - - - - - - - - * * * * * * * * * * - - - - - - - 
+    !   ! Set velocity (u) and preasure (p) boundary condition by penalty method
+    !   ! - - - - - - - - - - * * * * * * * * * * - - - - - - - - - -
+
+    !   implicit none
+    !   real, dimension(NoBV,3), intent(in) :: Fbcsvp
+    !   real :: coeff
+    !   real, intent(in out) :: A_K, Sv       !-------> Falta declarar la dimension de matriz y vector
+    !   integer :: preasure_row, NoBV, i, component
+      
+    !   coeff = 2
+    !   preasure_row = 2*n_nodes
+
+    !   do i =1, NoBV
+    !     node_id = Fbcsvp(i,1)
+    !     component = Fbcsvp(i,2)
+    !     if ( component .le. 2 ) then
+    !       A_K(2*node_id-2+component, 2*node_id-2 +component) = coeff
+    !       Sv(2*node_id-2+component, 1) = Fbcsvp(i,3)*coeff
+    !     else
+    !       pnode_id = pnodes(node_id,2)
+    !       A_K() = coeff
+    !       Sv() = coeff
+    !     end if
+    !   end do
+
+    ! end subroutine ApplyBoundCond
+  
 
 
   !Fin de contains
