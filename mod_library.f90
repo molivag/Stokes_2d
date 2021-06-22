@@ -514,7 +514,7 @@ module library
       real(8), dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(out) :: A_K  !Global Stiffnes matrix
       real, dimension(Nne,size(gauss_points,1)), intent(in)               :: Nx, Ny
       real, allocatable, dimension(:,:)       :: Np
-      real(8), dimension(2*Nne, 2*Nne)           :: ke
+      real(8), dimension(2*Nne, 2*Nne)        :: ke
       real, dimension(dim_prob, dim_prob)     :: Jaco, Jinv
       real                                    :: detJ
       real,  dimension(3,3)                   :: cc, C
@@ -527,9 +527,10 @@ module library
       real, dimension(16,3)                   :: part1
       real, dimension(16,16)                  :: part2
       real, dimension(16,16)                  :: part3
-      real(8), allocatable, dimension(:,:)     :: K12 !Lo puse allocatable por que marca error en la memoria 
+      real(8), allocatable, dimension(:,:)    :: K12, K12_T!Lo puse allocatable por que marca error en la memoria 
       ! Array 'k12' at (1) is larger than limit set by '-fmax-stack-var-size=', moved from stack to static storage. This makes the procedure unsafe when called recursively, 
       !or concurrently from multiple threads. Consider using '-frecursive', or increase the '-fmax-stack-var-size=' limit, or change the code to use an ALLOCATABLE array. [-Wsurprising]
+      
       real, dimension(16,4)                   :: kep
       real, dimension(8,2)                    :: part4
       real, dimension(2,1)                    :: part5
@@ -537,13 +538,15 @@ module library
       real, dimension(4,1)                    :: part6
       real, dimension(1,4)                    :: part7
       real, dimension(16,4)                   :: part8
-      real, dimension(4*Npne,1)                 :: dN
+      real, dimension(4*Npne,1)               :: dN
       integer, dimension(Nne,1)               :: node_id_map
       real, dimension(Nne,dim_prob)           :: element_nodes
       integer, dimension(Npne,1)              :: pnode_id_map
       real, dimension(Npne,dim_prob)          :: pelement_nodes
 
-      integer                                 :: gp, ngp, e, i,j, row_node, row, col_node, pnode_id, col
+      integer                                 :: gp, ngp, e, i,j,k, row_node, row 
+      integer                                 :: col_node, pnode_id, col, mrow, ncol
+      
 
       ngp = size(gauss_points,1) !TMB PODRIA SER VARIABLE PERMANENTE CON SAVE
 
@@ -580,7 +583,7 @@ module library
 
       !Setup for K1-2 block
       ! Npne is declared at the top as parameter
-      allocate (K12(n_nodes*2,n_pnodes))
+      allocate (K12(n_nodes*2,n_pnodes),K12_T(n_pnodes,n_nodes*2))
       K12 = 0
       
       call CompNDNatPointsQuad4(gauss_points, Np)
@@ -654,12 +657,56 @@ module library
           !   end do
         !Y hasta aqui para comprobar la matriz K12
       end do
-      ! filling the symetric part of K
-      A_K(1:2*n_nodes, 2*n_nodes+1:2*n_nodes+n_pnodes) = -K12  
-      A_K(2*n_nodes+1:2*n_nodes+n_pnodes, 1:2*n_nodes) = -K12
-              
-       
+
+      
+      mrow = 2*n_nodes
+      ncol = n_pnodes
+      
+      open(unit=4, file='K12_fort.dat', ACTION="write", STATUS="replace")
+      do i=1,mrow
+        write(4, '(1000F14.7)')( K12(i,j) ,j=1,ncol)
+      end do
+
+      close(4)
+
+      !========== Filling the symetric (upper and lower) part of K ==========
+      !========== Upper
+      do j = 683, (2*n_nodes+n_pnodes)
+        do i = 1, 2*n_nodes
+          do k=1,n_pnodes
+            A_K(i, j) = -K12(i,k)
+          end do
+        end do
+      end do
+
+      mrow = 2*n_nodes+n_pnodes 
+      ncol = 2*n_nodes+n_pnodes
+      
+      open(unit=2, file='UpperA_K.dat', ACTION="write", STATUS="replace")
+      do i=1,mrow
+        write(2, '(1000F14.7)')( A_K(i,j) ,j=1,ncol)
+      end do
+
+      close(2)
+
+      !========== Lower
+      K12_T = transpose(-K12)
+      do i = 683, (2*n_nodes+n_pnodes)
+        do j = 1, 2*n_nodes 
+          do k=1,n_pnodes
+            A_K(i, j) = K12_T(k,j)
+          end do
+        end do
+      end do
+      
+      ! do j=1,120
+      !   do i = 1,682
+      !     print*,K12(i,j)
+      !   end do
+      ! end do
     end subroutine GlobalK
+
+
 
     subroutine SetBounCond( NoBV, NoBVcol )
       ! - - - - - - - - - - - - - - * * * * * * * * * * - - - - - - - - - - - - - -
@@ -716,7 +763,7 @@ module library
       50 format(3F15.10)
 
    
-    end subroutine SetBounCond
+    end subroutine SetBounCond  
 
     subroutine ApplyBoundCond(A_K, Sv, NoBV, Fbcsvp )
       ! - - - - - - - - - - * * * * * * * * * * - - - - - - - 
