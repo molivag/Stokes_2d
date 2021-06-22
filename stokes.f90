@@ -41,20 +41,22 @@ program Stokes
   allocate( Fbcsvp(NoBV, NoBVcol) ) !Designo la memoria para la matriz de nodos con valor en la frontera
   call ReadMixFile(60,"Fbcsvp.dat", NoBV, NoBVcol, Fbcsvp)!Llamo el archivo de valores en la frontera y lo guardo en Fbcsvp
   
-  call GlobalK( A_K, Nx, Ny)
-  Sv = 0 !initializing source vector (Sv) 
+  do i = 1,NoBV
+    print*,Fbcsvp(i,3)
+  end do
 
-  !una vez calculada la matriz global y el vector de fuente (Sv), les aplicamos las condiciones de frontera
-  call ApplyBoundCond(A_K, Sv, NoBV, Fbcsvp )
+  ! call GlobalK( A_K, Nx, Ny)
+  ! Sv = 0 !initializing source vector (Sv) 
+
+  ! !una vez calculada la matriz global y el vector de fuente (Sv), les aplicamos las condiciones de frontera
+  ! call ApplyBoundCond(A_K, Sv, NoBV, Fbcsvp )
 
   !Despues de este ultimo call, obtenemos la matriz y vector global con condiciones de frontera
   ! Aqui entraria el solver, este deberia estar en un modulo distinto
   
 
-
-
   do i = 445,524
     print*,A_K(i,453)
-    end do
+  end do
 
 end program Stokes

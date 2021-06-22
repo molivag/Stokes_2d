@@ -95,7 +95,7 @@ module library
       read(UnitNum,22) ((Real_Array(i,j), j=1,NumCols), i=1,NumRows)
       print *, "Status_Mix_File ", status
 
-      22 format(1I3, 1I2, 1F12.10)
+      22 format(3F13.10)
 
       close (UnitNum)
 
@@ -676,9 +676,9 @@ module library
 
       real, dimension(341,3)    :: nodes
       integer, parameter        :: n_nodes = size(nodes,1)
-      integer :: i, ierror, a ,b, c, d, e
+      integer :: ierror, a ,b, c, d, e
       integer, intent(out) :: NoBV, NoBVcol
-      real :: x, y
+      real :: i, x, y
 
       call ReadRealFile(10,"nodes.dat", 341,3, nodes)
       !inicializamos los contadores
@@ -695,16 +695,16 @@ module library
         x=nodes(i,2)
         y=nodes(i,3)
         if(y .eq. 1.0) then
-            write(100,50) i, 1, 1.0
-            write(100,50) i, 2, 0.0
+            write(100,50) i, 1.0, 1.0
+            write(100,50) i, 2.0, 0.0
             a=a+1
             b=b+1
         else if(x .eq. 0.0)then
-            write(100,50) i,3,0.0
+            write(100,50) i,3.0,0.0
             c=c+1
         else if (x .eq.0.0 .or. y.eq.0.0 .or. x.eq.1.0)then
-            write(100,50) i, 1, 0.0
-            write(100,50) i, 2, 0.0
+            write(100,50) i, 1.0, 0.0
+            write(100,50) i, 2.0, 0.0
             d=d+1
             e=e+1
         end if
@@ -712,7 +712,9 @@ module library
       end do
 
       close(100)
-      50 format(2I3,' ', F13.10)
+      ! 50 format(2I3,' ', F13.10)
+      50 format(3F15.10)
+
    
     end subroutine SetBounCond
 
