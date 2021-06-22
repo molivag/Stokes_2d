@@ -76,7 +76,7 @@ module library
     end subroutine
 
     
-    subroutine ReadMixlFile(UnitNum, FileName, NumRows, NumCols, Real_Array)
+    subroutine ReadMixFile(UnitNum, FileName, NumRows, NumCols, Real_Array)
       implicit none
 
       ! - - - - - - - - - - * * * * * * * * * * - - - - - - - - - -
@@ -93,7 +93,7 @@ module library
 
       ! read in values
       read(UnitNum,22) ((Real_Array(i,j), j=1,NumCols), i=1,NumRows)
-      print *, "Status_Real_File ", status
+      print *, "Status_Mix_File ", status
 
       22 format(1I3, 1I2, 1F12.10)
 
