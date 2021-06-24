@@ -544,8 +544,8 @@ module library
       integer, dimension(Npne,1)              :: pnode_id_map
       real, dimension(Npne,dim_prob)          :: pelement_nodes
 
-      integer                                 :: gp, ngp, e, i,j,k, row_node, row 
-      integer                                 :: col_node, pnode_id, col, mrow, ncol
+      integer                                 :: gp, ngp, e, i,j, row_node, row 
+      integer                                 :: col_node, pnode_id, col!, mrow, ncol
       
 
       ngp = size(gauss_points,1) !TMB PODRIA SER VARIABLE PERMANENTE CON SAVE
@@ -658,58 +658,44 @@ module library
         !Y hasta aqui para comprobar la matriz K12
       end do
 
-      
-      mrow = 2*n_nodes
-      ncol = n_pnodes
-      
-      open(unit=4, file='K12_fort.dat', ACTION="write", STATUS="replace")
-      do i=1,mrow
-        write(4, '(1000F14.7)')( K12(i,j) ,j=1,ncol)
-      end do
-
-      close(4)
-
       !========== Filling the symetric (upper and lower) part of K ==========
       !========== Upper
-      do j = 683, (2*n_nodes+n_pnodes)
-        do i = 1, 2*n_nodes
-          do k=1,n_pnodes
-            A_K(i, j) = -K12(i,k)
-          end do
+      do i = 1, 2*n_nodes
+        do j = 2*n_nodes+1, (2*n_nodes+n_pnodes)
+          A_K(i, j) = -K12(i,j-682)
         end do
       end do
-
-      mrow = 2*n_nodes+n_pnodes 
-      ncol = 2*n_nodes+n_pnodes
-      
-      open(unit=2, file='UpperA_K.dat', ACTION="write", STATUS="replace")
-      do i=1,mrow
-        write(2, '(1000F14.7)')( A_K(i,j) ,j=1,ncol)
-      end do
-
-      close(2)
-
       !========== Lower
       K12_T = transpose(-K12)
-      do i = 683, (2*n_nodes+n_pnodes)
+      do i = 2*n_nodes+1, (2*n_nodes+n_pnodes)
         do j = 1, 2*n_nodes 
-          do k=1,n_pnodes
-            A_K(i, j) = K12_T(k,j)
-          end do
+          A_K(i, j) = K12_T(i-682,j)
         end do
       end do
-      
-      ! do j=1,120
-      !   do i = 1,682
-      !     print*,K12(i,j)
-      !   end do
+
+      ! !========== Escribe en archivo la parte simetrica de la matriz global 
+      ! mrow = 2*n_nodes
+      ! ncol = n_pnodes
+      ! open(unit=1, file='K12_T.dat', ACTION="write", STATUS="replace")
+      ! do i=1,ncol
+      !   write(1, '(1000F14.7)')( K12_T(i,j) ,j=1,mrow)
       ! end do
+      ! close(1)
+      ! !========== Escribir en archivo la matriz global
+      ! mrow = 2*n_nodes+n_pnodes 
+      ! ncol = 2*n_nodes+n_pnodes
+      ! open(unit=2, file='completeA_K.dat', ACTION="write", STATUS="replace")
+      ! do i=1,mrow
+      !   write(2, '(1000F14.7)')( A_K(i,j) ,j=1,ncol)
+      ! end do
+      ! close(2)
+      
     end subroutine GlobalK
 
 
 
     subroutine SetBounCond( NoBV, NoBVcol )
-      ! - - - - - - - - - - - - - - * * * * * * * * * * - - - - - - - - - - - - - -
+      !========================================================================
       !Esta subroutina revisa todos los nodos de la malla y asigna valores 
       !en la frontera para aquellos nodos localizados en ella. Abre un archivo 
       !en donde comenzara a escribir, en la primer columna: el numero de nodo. 
@@ -718,14 +704,14 @@ module library
       ! 2 = uy (componente y de la velocidad) 
       ! 3 = para la presion 
       !La tercera columna asigna el valor correspondiente de la condicion de forntera
-      !- - - - - - - - - - - - - - * * * * * * * * * * - - - - - - - - - - - - - - -
+      !=========================================================================
       implicit none
 
       real, dimension(341,3)    :: nodes
       integer, parameter        :: n_nodes = size(nodes,1)
-      integer :: ierror, a ,b, c, d, e
+      integer :: ierror, a ,b, c, d, e, i
       integer, intent(out) :: NoBV, NoBVcol
-      real :: i, x, y
+      real :: x, y
 
       call ReadRealFile(10,"nodes.dat", 341,3, nodes)
       !inicializamos los contadores
@@ -742,16 +728,16 @@ module library
         x=nodes(i,2)
         y=nodes(i,3)
         if(y .eq. 1.0) then
-            write(100,50) i, 1.0, 1.0
-            write(100,50) i, 2.0, 0.0
+            write(100,50) real(i), 1.0, 1.0
+            write(100,50) real(i), 2.0, 0.0
             a=a+1
             b=b+1
         else if(x .eq. 0.0)then
-            write(100,50) i,3.0,0.0
+            write(100,50) real(i),3.0,0.0
             c=c+1
         else if (x .eq.0.0 .or. y.eq.0.0 .or. x.eq.1.0)then
-            write(100,50) i, 1.0, 0.0
-            write(100,50) i, 2.0, 0.0
+            write(100,50) real(i), 1.0, 0.0
+            write(100,50) real(i), 2.0, 0.0
             d=d+1
             e=e+1
         end if
@@ -765,7 +751,7 @@ module library
    
     end subroutine SetBounCond  
 
-    subroutine ApplyBoundCond(A_K, Sv, NoBV, Fbcsvp )
+    subroutine ApplyBoundCond( NoBV, Fbcsvp, A_K, Sv )
       ! - - - - - - - - - - * * * * * * * * * * - - - - - - - 
       ! Set velocity (u) and preasure (p) boundary condition by penalty method
       ! - - - - - - - - - - * * * * * * * * * * - - - - - - - - - -
@@ -780,7 +766,7 @@ module library
       !Esencialmente la siguiente instruccion hace: A_K(1*2-1,:) = A_K(1,:) Es decir, obtene el valor maximo de
       !la primera fila de la matriz global K (A_K). No le veo el caso pero lo dejamos asi.
       param = maxval(A_K(int(Fbcsvp(1,1))*2-1,:))
-      coeff = abs(coeff) * 1.0E7
+      coeff = abs(param) * 1.0E7
       
       preasure_row = 2*n_nodes
 
