@@ -3,14 +3,16 @@ program Stokes
 
   implicit none
   ! - - - - - - - - - - * * * Variables que se usan aqui en main * * * * * * * - - - - - - - - - -
-  integer :: NoBV, NoBVcol, mrow, ncol
   real, allocatable, dimension(:,:) :: Fbcsvp
+  integer           :: NoBV, NoBVcol, mrow, ncol, i, j 
+  !========== S O L V E R
+  integer(8)        :: S_lda, S_info, S_m, S_n, S_ipiv
   ! - - - - - - - - - - - - - - - * * * Fin * * * * * * * - - - - - - - - - - - - - - - - 
   
-  integer :: i, j !Estas variables declaradas solo son de prueba para ir testeando la funcionalidad del codigom, se cambiaran por el bucle principal en compK
-  real(8), allocatable, dimension(:,:) :: A_K
-  real, allocatable, dimension(:,:) :: N, Nx, Ny
-  real(8), dimension(2*n_nodes+n_pnodes, 1) :: Sv
+  ! integer :: i, j !Estas variables declaradas solo son de prueba para ir testeando la funcionalidad del codigom, se cambiaran por el bucle principal en compK
+  double precision, allocatable, dimension(:,:) :: A_K
+  double precision, allocatable, dimension(:,:) :: N, Nx, Ny
+  double precision, dimension(2*n_nodes+n_pnodes, 1) :: Sv
 
   ! real, dimension(2,2) :: Jaco
 
@@ -41,48 +43,34 @@ program Stokes
   allocate( Fbcsvp(NoBV, NoBVcol) ) !Designo la memoria para la matriz de nodos con valor en la frontera
   call ReadMixFile(60,"Fbcsvp.dat", NoBV, NoBVcol, Fbcsvp)!Llamo el archivo de valores en la frontera y lo guardo en Fbcsvp
   
-  ! do i = 1,NoBV
-  !   print*,Fbcsvp(i,3)
-  ! end do
-
   call GlobalK( A_K, Nx, Ny)
 
-  ! print*, ' '
-  ! print*, 'A_K(640,802)',A_K(640,802)
-  ! print*, ' '
-  ! print*, 'A_K(640,803)',A_K(640,803)
-  ! print*, ' '
-  ! print*, 'n_nodes',n_nodes
-  ! print*, 'n_pnodes',n_pnodes
-  ! print*, ' '
-
-  ! do i = 1,803
-  !   print*,A_K(i,803)
-  ! end do
-
   Sv = 0 !initializing source vector (Sv) 
-
-  ! una vez calculada la matriz global y el vector de fuente (Sv), les aplicamos las condiciones de frontera
-  ! call ApplyBoundCond(A_K, Sv, NoBV, Fbcsvp )
-
+  !========== Una vez calculada la matriz global y el vector de fuente (Sv), les aplicamos las condiciones
+  ! de frontera esta subrutina anterior usa como input Sv y A_K y los entrega de nuevo con las BCS aplicadas 
+  call ApplyBoundCond(NoBV, Fbcsvp, A_K, Sv )
   !Despues de este ultimo call, obtenemos la matriz y vector global con condiciones de frontera
-  ! Aqui entraria el solver, este deberia estar en un modulo distinto
+
+  ! !========== S O L V E R (L A P A C K) ==========
+  ! !========== LU FACTORIZATION 
+  ! S_m   = size(A_K,1)
+  ! S_n   = size(A_K,2)
+  ! S_lda = max(1,size(A_K,1))
+
+  ! print*,' '
+  ! print*,'Leading dimension of A_K',S_lda
+  ! print*,' '
+
+  ! call dgetrf( S_m, S_n, A_K, S_lda, S_ipiv, S_info )
   
-
-  ! do j=1,2*n_nodes+n_pnodes
-  !   do i = 1,2*n_nodes+n_pnodes
-  !     print*,A_K(i,j)
-  !   end do
-  ! end do
-
-  ! mrow = 2*n_nodes+n_pnodes
-  ! ncol = 2*n_nodes+n_pnodes
+  !========== Escribir en archivo la matriz global
   
-  ! open(unit=2, file='globalK.dat', ACTION="write", STATUS="replace")
-  ! do i=1,ncol
-  !   write(2, '(1000F14.7)')( A_K(i,j) ,j=1,mrow)
-  ! end do
-
-  ! close(2)
+  mrow = 2*n_nodes+n_pnodes 
+  ncol = 2*n_nodes+n_pnodes
+  open(unit=2, file='A_K.dat', ACTION="write", STATUS="new")
+  do i=1,2*n_nodes+n_pnodes 
+    write(2, '(1000F20.9)')( A_K(i,j) ,j=1,2*n_nodes+n_pnodes)
+  end do
+  close(2)
 
 end program Stokes

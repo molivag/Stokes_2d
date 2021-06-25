@@ -15,7 +15,7 @@ module library
   integer, parameter        :: Npne = size(pelements,2)-1   !Number of pnodes in the eleement
   integer, parameter        :: dim_prob = size(nodes,2)-1 !dimension del problema
 
-  real, allocatable, dimension(:,:) :: gauss_points, gauss_weights !Verificar si debe ser global---> Si, se usa en la funcion ComputeK
+  double precision, allocatable, dimension(:,:) :: gauss_points, gauss_weights !Verificar si debe ser global---> Si, se usa en la funcion ComputeK
 
   ! ! ! Fin de variables globales ! ! !
 
@@ -93,7 +93,7 @@ module library
 
       ! read in values
       read(UnitNum,22) ((Real_Array(i,j), j=1,NumCols), i=1,NumRows)
-      print *, "Status_Mix_File ", status
+      print *, "Status_Mix_File  ", status
 
       22 format(3F13.10)
 
@@ -102,15 +102,13 @@ module library
     end subroutine
 
 
-
-
     subroutine GetQuadGauss(fila, columna, gauss_points, gauss_weights)
       implicit none
 
       integer,intent(in) :: fila, columna
-      real, allocatable, dimension(:,:),intent(out) :: gauss_points, gauss_weights
+      double precision, allocatable, dimension(:,:),intent(out) :: gauss_points, gauss_weights
       integer :: i,j,k
-      real, allocatable, dimension(:,:) :: w1, w2, w, x
+      double precision, allocatable, dimension(:,:) :: w1, w2, w, x
 
       allocate(gauss_points(fila*columna,2),gauss_weights(fila*columna,1))
       allocate(w1(columna,1),w2(1,columna), x(columna,1))
@@ -157,11 +155,11 @@ module library
     subroutine CompNDNatPointsQuad8(gauss_points, N, Nx, Ny)
       implicit none
 
-      real, dimension(:,:), intent(in) :: gauss_points
-      real, allocatable, dimension(:,:), intent(out) :: N, Nx, Ny
-      real, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
+      double precision, dimension(:,:), intent(in) :: gauss_points
+      double precision, allocatable, dimension(:,:), intent(out) :: N, Nx, Ny
+      double precision, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
       integer, dimension(Nne,dim_prob) :: master_nodes
-      real    :: xi, eta, mn_xi, mn_eta
+      double precision    :: xi, eta, mn_xi, mn_eta
       integer :: ngp, i, j, jj, k
 
       !number of gauss points
@@ -221,11 +219,11 @@ module library
     subroutine CompNDNatPointsQuad4(gauss_points, Np)
       implicit none
 
-      real, dimension(:,:), intent(in) :: gauss_points
-      real, allocatable, dimension(:,:), intent(out) :: Np
-      real, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
+      double precision, dimension(:,:), intent(in) :: gauss_points
+      double precision, allocatable, dimension(:,:), intent(out) :: Np
+      double precision, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
       integer, dimension(Npne,dim_prob) :: master_nodes
-      real    :: xi, eta, mn_xi, mn_eta
+      double precision    :: xi, eta, mn_xi, mn_eta
       integer :: ngp, i, j
 
       ngp = size(gauss_points,1) 
@@ -308,11 +306,11 @@ module library
       implicit none
 
       real, dimension(Nne,dim_prob), intent(in)            :: element_nodes
-      real, dimension(Nne,size(gauss_points) ), intent(in) :: Nx, Ny
+      double precision, dimension(Nne,size(gauss_points) ), intent(in) :: Nx, Ny
       integer, intent(in)                                  :: Gp !esta variable se usara en el lazo principal con el numero de punto de gauss para evaluar las integrales elementales
-      real, dimension(dim_prob,Nne)                        :: Basis2D
-      real, dimension(1,Nne)                               :: Nxi, Neta
-      real, dimension(dim_prob,dim_prob)                   :: J2D
+      double precision, dimension(dim_prob,Nne)                        :: Basis2D
+      double precision, dimension(1,Nne)                               :: Nxi, Neta
+      double precision, dimension(dim_prob,dim_prob)                   :: J2D
 
 
       !con estas instrucciones extraigo la columna de Nx como renglon y lo guardo en Nxi, Gp se
@@ -347,12 +345,12 @@ module library
 
       implicit none
 
-      real, dimension(dim_prob,dim_prob), intent(in)  :: A
-      real, dimension(dim_prob,dim_prob)              :: inv2x2
+      double precision, dimension(dim_prob,dim_prob), intent(in)  :: A
+      double precision, dimension(dim_prob,dim_prob)              :: inv2x2
 
       double precision, parameter :: EPS = 1.0E-10
-      real :: det
-      real, dimension(2,2) :: cofactor
+      double precision :: det
+      double precision, dimension(2,2) :: cofactor
 
 
       det =   A(1,1)*A(2,2) - A(1,2)*A(2,1)
@@ -378,8 +376,8 @@ module library
 
       implicit none
 
-      real, dimension(dim_prob,dim_prob), intent (in)   :: A
-      real, dimension(2*dim_prob, 2*dim_prob)           :: buildJb
+      double precision, dimension(dim_prob,dim_prob), intent (in)   :: A
+      double precision, dimension(2*dim_prob, 2*dim_prob)           :: buildJb
 
       buildJb(1:2,1:2) = A
       buildJb(3:4,3:4) = A
@@ -389,8 +387,8 @@ module library
     function m22det(A)
 
       implicit none
-      real :: m22det
-      real, dimension(2,2), intent(in)  :: A
+      double precision :: m22det
+      double precision, dimension(2,2), intent(in)  :: A
 
 
 
@@ -428,12 +426,12 @@ module library
 
       implicit none
 
-      real, dimension(Nne,size(gauss_points) ) :: Nx, Ny
+      double precision, dimension(Nne,size(gauss_points) ) :: Nx, Ny
       integer, intent (in) :: Gp
 
       ! real, dimension(4, 2*Nne)  :: B
-      real, dimension(4, 2*Nne)  :: compBmat
-      real, dimension(1, Nne)    :: Nxi, Neta
+      double precision, dimension(4, 2*Nne)  :: compBmat
+      double precision, dimension(1, Nne)    :: Nxi, Neta
 
       integer::  i
 
@@ -511,34 +509,34 @@ module library
         ! Nne   Ya declarado como variable global
       !- - - * * * * * * * * * - - -
 
-      real(8), dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(out) :: A_K  !Global Stiffnes matrix
-      real, dimension(Nne,size(gauss_points,1)), intent(in)               :: Nx, Ny
-      real, allocatable, dimension(:,:)       :: Np
-      real(8), dimension(2*Nne, 2*Nne)        :: ke
-      real, dimension(dim_prob, dim_prob)     :: Jaco, Jinv
-      real                                    :: detJ
-      real,  dimension(3,3)                   :: cc, C
-      real, dimension(2*dim_prob, 2*dim_prob) :: Jb
-      real, dimension(4,2*Nne)                :: B
-      real, dimension(3,dim_prob*dim_prob)    :: HJ
-      real, dimension(3,2*Nne)                :: HJB
-      real, dimension(2*Nne,3)                :: HJB_T
+      double precision, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(out) :: A_K  !Global Stiffnes matrix
+      double precision, dimension(Nne,size(gauss_points,1)), intent(in)               :: Nx, Ny
+      double precision, allocatable, dimension(:,:)       :: Np
+      double precision, dimension(2*Nne, 2*Nne)        :: ke
+      double precision, dimension(dim_prob, dim_prob)     :: Jaco, Jinv
+      double precision                                    :: detJ
+      real,  dimension(3,3)                               :: cc, C
+      double precision, dimension(2*dim_prob, 2*dim_prob) :: Jb
+      double precision, dimension(4,2*Nne)                :: B
+      double precision, dimension(3,dim_prob*dim_prob)    :: HJ
+      double precision, dimension(3,2*Nne)                :: HJB
+      double precision, dimension(2*Nne,3)                :: HJB_T
       real, dimension(3,4)                    :: H
-      real, dimension(16,3)                   :: part1
-      real, dimension(16,16)                  :: part2
-      real, dimension(16,16)                  :: part3
+      double precision, dimension(16,3)                   :: part1
+      double precision, dimension(16,16)                  :: part2
+      double precision, dimension(16,16)                  :: part3
       real(8), allocatable, dimension(:,:)    :: K12, K12_T!Lo puse allocatable por que marca error en la memoria 
       ! Array 'k12' at (1) is larger than limit set by '-fmax-stack-var-size=', moved from stack to static storage. This makes the procedure unsafe when called recursively, 
       !or concurrently from multiple threads. Consider using '-frecursive', or increase the '-fmax-stack-var-size=' limit, or change the code to use an ALLOCATABLE array. [-Wsurprising]
       
-      real, dimension(16,4)                   :: kep
-      real, dimension(8,2)                    :: part4
-      real, dimension(2,1)                    :: part5
-      real, dimension(2,1)                    :: A
+      double precision, dimension(16,4)                   :: kep
+      double precision, dimension(8,2)                    :: part4
+      double precision, dimension(2,1)                    :: part5
+      double precision, dimension(2,1)                    :: A
       real, dimension(4,1)                    :: part6
       real, dimension(1,4)                    :: part7
-      real, dimension(16,4)                   :: part8
-      real, dimension(4*Npne,1)               :: dN
+      double precision, dimension(16,4)                   :: part8
+      double precision, dimension(4*Npne,1)               :: dN
       integer, dimension(Nne,1)               :: node_id_map
       real, dimension(Nne,dim_prob)           :: element_nodes
       integer, dimension(Npne,1)              :: pnode_id_map
@@ -758,9 +756,9 @@ module library
 
       implicit none
       real, dimension(NoBV,3), intent(in) :: Fbcsvp
-      real(8) :: param, coeff
-      real(8), dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(in out) :: A_K  !Global Stiffnes matrix
-      real(8), dimension(2*n_nodes+n_pnodes, 1), intent(in out) :: Sv
+      double precision :: param, coeff
+      double precision, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(in out) :: A_K  !Global Stiffnes matrix
+      double precision, dimension(2*n_nodes+n_pnodes, 1), intent(in out) :: Sv
       integer :: preasure_row, NoBV, i, component, node_id, pnode_id
 
       !Esencialmente la siguiente instruccion hace: A_K(1*2-1,:) = A_K(1,:) Es decir, obtene el valor maximo de
