@@ -6,7 +6,8 @@ program Stokes
   real, allocatable, dimension(:,:) :: Fbcsvp
   integer           :: NoBV, NoBVcol, mrow, ncol, i, j 
   !========== S O L V E R
-  integer(8)        :: S_lda, S_info, S_m, S_n, S_ipiv
+  integer  ::  S_m, S_n, S_lda, S_info!, S_ipiv
+  external :: mkl_dgetrfnp
   ! - - - - - - - - - - - - - - - * * * Fin * * * * * * * - - - - - - - - - - - - - - - - 
   
   ! integer :: i, j !Estas variables declaradas solo son de prueba para ir testeando la funcionalidad del codigom, se cambiaran por el bucle principal en compK
@@ -51,23 +52,32 @@ program Stokes
   call ApplyBoundCond(NoBV, Fbcsvp, A_K, Sv )
   !Despues de este ultimo call, obtenemos la matriz y vector global con condiciones de frontera
 
-  ! !========== S O L V E R (L A P A C K) ==========
-  ! !========== LU FACTORIZATION 
-  ! S_m   = size(A_K,1)
-  ! S_n   = size(A_K,2)
-  ! S_lda = max(1,size(A_K,1))
+  print*,'!========== S O L V E R (L A P A C K) =========='
+  print*,'!========== LU FACTORIZATION '
+  S_m   = size(A_K,1)
+  S_n   = size(A_K,2)
+  S_lda = max(1,size(A_K,1))
 
-  ! print*,' '
-  ! print*,'Leading dimension of A_K',S_lda
-  ! print*,' '
+  print*,' '
+  print*,'Leading dimension of A_K',S_lda
+  print*,' '
 
   ! call dgetrf( S_m, S_n, A_K, S_lda, S_ipiv, S_info )
+  call mkl_dgetrfnp( S_m, S_n, A_K, S_lda, S_info )
+  
+  PRINT *, "Factorization completed."
+  PRINT *, ""
+  PRINT*, 'SHAPE OF A_K_LU',SHAPE(A_K)
+  PRINT*, ' '
+  PRINT*, 'S_info', S_info
+  PRINT*, ' '
+  
   
   !========== Escribir en archivo la matriz global
   
   mrow = 2*n_nodes+n_pnodes 
   ncol = 2*n_nodes+n_pnodes
-  open(unit=2, file='A_K.dat', ACTION="write", STATUS="new")
+  open(unit=2, file='A_K_LU.dat', ACTION="write", STATUS="replace")
   do i=1,2*n_nodes+n_pnodes 
     write(2, '(1000F20.9)')( A_K(i,j) ,j=1,2*n_nodes+n_pnodes)
   end do
