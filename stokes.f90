@@ -4,10 +4,11 @@ program Stokes
   implicit none
   ! - - - - - - - - - - * * * Variables que se usan aqui en main * * * * * * * - - - - - - - - - -
   real, allocatable, dimension(:,:) :: Fbcsvp
-  integer           :: NoBV, NoBVcol, mrow, ncol, i, j 
+  integer           :: NoBV, NoBVcol, i, j, mrow, ncol
   !========== S O L V E R
-  integer  ::  S_m, S_n, S_lda, S_info!, S_ipiv
-  external :: mkl_dgetrfnp
+  integer  ::  S_m, S_n, S_lda, S_info
+  external :: mkl_dgetrfnp, dgetrf
+  integer, allocatable, dimension(:,:) :: S_ipiv
   ! - - - - - - - - - - - - - - - * * * Fin * * * * * * * - - - - - - - - - - - - - - - - 
   
   ! integer :: i, j !Estas variables declaradas solo son de prueba para ir testeando la funcionalidad del codigom, se cambiaran por el bucle principal en compK
@@ -51,19 +52,23 @@ program Stokes
   ! de frontera esta subrutina anterior usa como input Sv y A_K y los entrega de nuevo con las BCS aplicadas 
   call ApplyBoundCond(NoBV, Fbcsvp, A_K, Sv )
   !Despues de este ultimo call, obtenemos la matriz y vector global con condiciones de frontera
-
+  
+  print*,''
   print*,'!========== S O L V E R (L A P A C K) =========='
   print*,'!========== LU FACTORIZATION '
   S_m   = size(A_K,1)
   S_n   = size(A_K,2)
   S_lda = max(1,size(A_K,1))
-
+  allocate( S_ipiv( 1, max(1,min(S_m, S_n)) ) )
+  
+  print*,' '
+  print*,'shape of S_ipiv',shape(S_ipiv)
   print*,' '
   print*,'Leading dimension of A_K',S_lda
   print*,' '
 
-  ! call dgetrf( S_m, S_n, A_K, S_lda, S_ipiv, S_info )
-  call mkl_dgetrfnp( S_m, S_n, A_K, S_lda, S_info )
+  call dgetrf( S_m, S_n, A_K, S_lda, S_ipiv, S_info )
+  ! call mkl_dgetrfnp( S_m, S_n, A_K, S_lda, S_info )
   
   PRINT *, "Factorization completed."
   PRINT *, ""
@@ -72,12 +77,15 @@ program Stokes
   PRINT*, 'S_info', S_info
   PRINT*, ' '
   
+  ! do i = 1, 803
+  !   print*, S_ipiv(1,i)
+  ! end do
   
   !========== Escribir en archivo la matriz global
   
   mrow = 2*n_nodes+n_pnodes 
   ncol = 2*n_nodes+n_pnodes
-  open(unit=2, file='A_K_LU.dat', ACTION="write", STATUS="replace")
+  open(unit=2, file='A_K_PLU.dat', ACTION="write", STATUS="replace ")
   do i=1,2*n_nodes+n_pnodes 
     write(2, '(1000F20.9)')( A_K(i,j) ,j=1,2*n_nodes+n_pnodes)
   end do
