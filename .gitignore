@@ -7,3 +7,8 @@ test.f90
 stks.txt
 Makefile
 Ds_Store/
+*.code-workspace
+*.fig
+Matlab_fig/
+*.x
+src/
