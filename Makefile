@@ -24,7 +24,7 @@ SRCS = mod_library stokes
 OBJS = $(SRCS:=.o)
 
 #	executable 
-MAIN = stokes
+MAIN = stokes.x
 #========== Fin variables ===========
 
 #	compile project

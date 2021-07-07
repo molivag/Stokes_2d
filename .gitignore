@@ -3,7 +3,11 @@ test.f90
 *.o
 *.mod
 *.out
+*.x
 .vscode/
 stks.txt
 Makefile
 Ds_Store/
+*.code-workspace
+Matlab_fig/
+*.fig

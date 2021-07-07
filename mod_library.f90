@@ -53,7 +53,7 @@ module library
       ! read in values
       read(UnitNum,*) ((IntegerArray(i,j), j=1,NumCols), i=1,NumRows)
       print *, "Status_Int_File  ", status
-      print*, "Shape of ",FileName," is", shape(IntegerArray)
+      print*, "Shape of ",FileName," is ", shape(IntegerArray)
       close (UnitNum)
 
     end subroutine ReadIntegerFile
@@ -694,10 +694,10 @@ module library
 
     subroutine SetBounCond( NoBV, NoBVcol )
       !========================================================================
-      !Esta subroutina revisa todos los nodos de la malla y asigna valores 
-      !en la frontera para aquellos nodos localizados en ella. Abre un archivo 
-      !en donde comenzara a escribir, en la primer columna: el numero de nodo. 
-      ! La segunda columna tendra la condicion de fronntera
+      !Esta subroutina revisa todos los nodos de la malla y define el tipo de
+      !nodo en la frontera. Abre un archivo en donde comenzara a escribir, 
+      ! en la primer columna: el numero de nodo. 
+      ! La segunda columna tendra el tipo de nodo
       ! 1 = ux (componente x de la velocidad) 
       ! 2 = uy (componente y de la velocidad) 
       ! 3 = para la presion 
