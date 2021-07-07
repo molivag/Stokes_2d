@@ -3,12 +3,18 @@ test.f90
 *.o
 *.mod
 *.out
+*.x
 .vscode/
 stks.txt
 Makefile
 Ds_Store/
 *.code-workspace
+<<<<<<< HEAD
 *.fig
 Matlab_fig/
 *.x
 src/
+=======
+Matlab_fig/
+*.fig
+>>>>>>> double

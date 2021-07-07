@@ -1,7 +1,6 @@
-
 #========== Definicion de variables ==========
 #	compiler
-FC = ifort # /opt/intel/oneapi/compiler/2021.2.0/mac/bin/intel64/ifort
+FC = ifort
 
 #OBJ_DIR = ./obj	#FOR OBJECTS FILES
 #BIN_DIR = ./bin  #FOR EXECUTABLE
@@ -10,19 +9,22 @@ FC = ifort # /opt/intel/oneapi/compiler/2021.2.0/mac/bin/intel64/ifort
 #	compiler flags
 #	standard
 #CFLAGS = -std=f2008ts
+#	debugger option
+CFLAGS += -g
 #	warning flags
 CFLAGS += -warn all
-#	debugging options
-CFLAGS += -check all -CB -traceback 
-#	GDB flag
-CFLAGS += -g
+#	optimization flags
+CFLAGS += -heap-arrays
+#	error finding options
+CFLAGS += -traceback -check all -CB -fp-stack-check
+
 #	source files
 SRCS = mod_library stokes
 
 OBJS = $(SRCS:=.o)
 
 #	executable 
-MAIN = stokes
+MAIN = stokes.x
 #========== Fin variables ===========
 
 #	compile project
@@ -35,7 +37,7 @@ all : $(MAIN)
 	@echo '======================'
 
 $(MAIN) : $(OBJS)
-	@$(FC) $(CFLAGS) -mkl $(OBJS) -o $(MAIN)
+	@$(FC) $(CFLAGS) -g -mkl -O0 $(OBJS) -o $(MAIN)
 
 .SUFFIXES : .f90 .o
 #.o.f90 :Dos opciones, cual sera la correcta?
