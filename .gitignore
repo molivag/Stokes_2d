@@ -12,7 +12,7 @@ Ds_Store/
 <<<<<<< HEAD
 *.fig
 Matlab_fig/
-*.x
+*.exe
 src/
 =======
 Matlab_fig/
