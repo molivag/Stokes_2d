@@ -524,7 +524,7 @@ module library
 
       double precision, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(out) :: A_K  !Global Stiffnes matrix
       double precision, dimension(Nne,size(gauss_points,1)), intent(in)               :: dN_dxi, dN_deta
-      double precision, allocatable, dimension(:,:)       :: Np
+      double precision, allocatable, dimension(:,:)       :: Np, dd, ddd
       double precision, dimension(2*Nne, 2*Nne)        :: ke
       double precision, dimension(dim_prob, dim_prob)     :: Jaco, Jinv
       double precision                                    :: detJ
@@ -546,8 +546,8 @@ module library
       double precision, dimension(8,2)                    :: part4
       double precision, dimension(2,1)                    :: part5
       double precision, dimension(2,1)                    :: A
-      real, dimension(4,1)                    :: part6
-      real, dimension(1,4)                    :: part7
+      double precision, dimension(4,1)                    :: part6
+      double precision, dimension(1,4)                    :: part7
       double precision, dimension(16,4)                   :: part8
       double precision, dimension(4*Npne,1)               :: dN
       integer, dimension(Nne,1)               :: node_id_map
@@ -597,7 +597,7 @@ module library
       allocate (K12(n_nodes*2,n_pnodes),K12_T(n_pnodes,n_nodes*2))
       K12 = 0
       
-      call Quad4Nodes(gauss_points, Np)
+      call Quad4Nodes(gauss_points, ngp, Np, dd,ddd)
 
       do e = 1, n_elements
         kep = 0.0
@@ -616,7 +616,7 @@ module library
                                               ! pues el resultado de matmul debe guardarse en otra variable, A sino marca error
             dN(2*j-1:2*j ,1)= A(:,1)          !quiza si necesite dividri la operacion de este matmul
           end do
-          part6(:,1) = NP(:,gp)
+          part6(:,1) = Np(:,gp)
           part7 = transpose(part6)
           part8 = matmul(dn,part7)
           kep = kep + part8 * (detJ*gauss_weights(gp,1)) !----> Verificar si hace falta la parte9 separando part8 * detJ
