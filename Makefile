@@ -20,7 +20,7 @@ CFLAGS += -O0 -heap-arrays
 CFLAGS += -traceback -check all -CB -fp-stack-check
 
 #	source files
-SRCS = mod_library stokes
+SRCS = mod_elemKinds mod_library stokes
 
 OBJS = $(SRCS:=.o)
 
@@ -52,7 +52,7 @@ $(MAIN) : $(OBJS)
 
 #	Regla ficticia, es decir que no tiene dependencias (phony rules)
 clean :
-	@$(RM) *.o *.mod $(MAIN)
+	@$(RM) *.o *.mod *.exe $(MAIN)
 #	clean no tiene dependencias pero si objetivos
 	@echo '||'
 	@echo ' - Everything is clean'
