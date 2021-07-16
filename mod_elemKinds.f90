@@ -150,46 +150,117 @@ module Isoparametric
 
     end subroutine Quad8Nodes
 
-    subroutine Quad4Nodes(gauss_points, Np)
-      !CompNDNatPointsQuad4
-      implicit none
 
-      integer, parameter :: Npne = 4
-      integer, parameter :: dim_prob = 2
+    subroutine Quad4Nodes (gauss_points, ngp, N, dN_dxi, dN_deta)
+      !CompNDNatPointsQuad8
+      ! Shape functions for square (quadrilaters) linear elements
+			!
+			!  |
+			!  |
+			!  | o- - - -o
+			!  Y |       |
+			!  | |       |
+			!  | o- - - -o
+			!  |
+			!  +--------X-------->
+      
+      implicit None
+
+      integer, parameter  :: Nne = 4
+      integer, parameter  :: dim_prob = 2
+
+      integer,                          intent(in) :: ngp
       double precision, dimension(:,:), intent(in) :: gauss_points
-      double precision, allocatable, dimension(:,:), intent(out) :: Np
+      double precision, allocatable, dimension(:,:), intent(out) :: N, dN_dxi, dN_deta
       double precision, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
-      integer, dimension(Npne,dim_prob) :: master_nodes
+      integer, dimension(Nne,dim_prob) :: master_nodes
       double precision    :: xi, eta, mn_xi, mn_eta
-      integer :: ngp, i, j
+      integer             :: i, j, jj, k
 
-      ngp = size(gauss_points,1) 
-      !number of gauss points
-      ! esta puede quedar como variable global si se usa en alguna otra subrutina
-                                ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
-      allocate( Np(Npne,ngp))
+      ! !number of gauss points
+      ! ngp = size(gauss_points,1) ! esta puede quedar como variable global si se usa en alguna otra subrutina
+      !                           ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
+      allocate( N(Nne,ngp),dN_dxi(Nne,ngp),dN_deta(Nne,ngp) )
 
-      Np  = 0.0
+        N     = 0.0
+      dN_dxi  = 0.0
+      dN_deta = 0.0
+
       xi_vector  = gauss_points(:,1)     ! xi-coordinate of point j
       eta_vector = gauss_points(:,2)
 
       !coordinates of the nodes of the master element
-      master_nodes = reshape([1, -1, -1, 1, 1, 1, -1, -1], [Npne,dim_prob])
+      master_nodes = reshape([1, -1, -1, 1, 1, 1, -1, -1], [Nne,dim_prob])
       !NOTA ** Para que el reshape funcione correctamente, o que produzca el par de valores deseado, primero se deben
-      !colocar todos los valores en x, luego todos los de y y luego, si hubiera, todos los de z para que al acomodarse salga el par
-      !suponiendo un reshape de 3,2 debe acomodarse x1, x2, x3, y1, y2, y3 DUDA *Siempre debe ser es asi*
+      !colocar todos los valores en x, luego todos los de y y luego, si hubiera todos los de z para que al acomodarse salga el par
+      !suponiendo un reshape de 3,2 debe acomodarse x1, x2, x3, y1, y2, y3 DUDA *Siempre es asi*
 
-      do j = 1, ngp
-        xi  = xi_vector(j)      ! xi-coordinate of point j
-        eta = eta_vector(j)     ! eta-coordinate of point j
-        do i = 1, 4
+      ! dN(xi,eta)/dx = dN/dxi(dxi\dx) + dN/deta(deta/dx)
+      ! dN(xi,eta)/dy = dN/dxi(dxi\dy) + dN/deta(deta/dy)
+      ! Aqui se calculan as funciones de forma N y parte de las derivadas dN/dxi and dN_deta
+      ! mas no las derivadas dN/dx and dN/dy completas
+           
+      !do loop: compute N, dN_dxi, dN_deta
+      do j=1,ngp                              ! columns for point 1,2 ...
+        xi=xi_vector(j);                      ! xi-coordinate of point j 
+        eta=eta_vector(j);                    ! eta-coordinate of point j 
+        do i=1,4                              ! rows for N1, N2, ...
           mn_xi = master_nodes(i,1)
           mn_eta= master_nodes(i,2)
-          Np(i,j)=(1.0 + mn_xi*xi)*(1.0 + mn_eta*eta)/4.0 
+          N(i,j)=(1.0 + mn_xi*xi)*(1.0 + mn_eta*eta)/4.0        ! Ni(xi,eta)
+          dN_dxi(i,j)= mn_xi*(1.0 + mn_eta*eta)/4.0             ! dNi/dxi(xi,eta)
+          dN_deta(i,j)= mn_eta*(1.0 + mn_xi*xi )/4.0            ! dNi/deta(xi,eta
         end do
       end do
+      
 
     end subroutine Quad4Nodes
+
+
+
+
+
+    ! subroutine Quad4Nodes(gauss_points, ngp, Np)
+    !   !CompNDNatPointsQuad4
+    !   implicit none
+
+    !   integer,                          intent(in) :: ngp
+    !   double precision, dimension(:,:), intent(in) :: gauss_points
+    !   double precision, allocatable, dimension(:,:), intent(out) :: Np
+    !   double precision, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
+    !   integer, parameter :: Npne = 4
+    !   integer, parameter :: dim_prob = 2
+    !   integer, dimension(Npne,dim_prob) :: master_nodes
+    !   double precision    :: xi, eta, mn_xi, mn_eta
+    !   integer :: i, j
+
+
+    !   !number of gauss points
+    !   ! esta puede quedar como variable global si se usa en alguna otra subrutina
+    !                             ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
+    !   allocate( Np(Npne,ngp))
+
+    !   Np  = 0.0
+    !   xi_vector  = gauss_points(:,1)     ! xi-coordinate of point j
+    !   eta_vector = gauss_points(:,2)
+
+    !   !coordinates of the nodes of the master element
+    !   master_nodes = reshape([1, -1, -1, 1, 1, 1, -1, -1], [Npne,dim_prob])
+    !   !NOTA ** Para que el reshape funcione correctamente, o que produzca el par de valores deseado, primero se deben
+    !   !colocar todos los valores en x, luego todos los de y y luego, si hubiera, todos los de z para que al acomodarse salga el par
+    !   !suponiendo un reshape de 3,2 debe acomodarse x1, x2, x3, y1, y2, y3 DUDA *Siempre debe ser es asi*
+
+    !   do j = 1, ngp
+    !     xi  = xi_vector(j)      ! xi-coordinate of point j
+    !     eta = eta_vector(j)     ! eta-coordinate of point j
+    !     do i = 1, 4
+    !       mn_xi = master_nodes(i,1)
+    !       mn_eta= master_nodes(i,2)
+    !       Np(i,j)=(1.0 + mn_xi*xi)*(1.0 + mn_eta*eta)/4.0 
+    !     end do
+    !   end do
+
+    ! end subroutine Quad4Nodes
 
 
 
