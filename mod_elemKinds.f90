@@ -64,7 +64,7 @@ module Isoparametric
 
 
   
-    subroutine Quad8Nodes (gauss_points, ngp, N, dN_dxi, dN_deta)
+    subroutine Quad8Nodes(gauss_points, ngp, N, dN_dxi, dN_deta)
       !CompNDNatPointsQuad8
       ! Shape functions for square (quadrilaters) linear elements
 			!
@@ -171,16 +171,17 @@ module Isoparametric
 
       integer,                          intent(in) :: ngp
       double precision, dimension(:,:), intent(in) :: gauss_points
-      double precision, allocatable, dimension(:,:), intent(out) :: N, dN_dxi, dN_deta
+      double precision, allocatable, dimension(:,:), intent(out) :: N
+      double precision, allocatable, dimension(:,:), intent(out), optional:: dN_dxi, dN_deta
       double precision, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
       integer, dimension(Nne,dim_prob) :: master_nodes
       double precision    :: xi, eta, mn_xi, mn_eta
-      integer             :: i, j, jj, k
+      integer             :: i, j
 
       ! !number of gauss points
       ! ngp = size(gauss_points,1) ! esta puede quedar como variable global si se usa en alguna otra subrutina
       !                           ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
-      allocate( N(Nne,ngp),dN_dxi(Nne,ngp),dN_deta(Nne,ngp) )
+      allocate( N(Nne,ngp),dN_dxi(Nne,ngp), dN_deta(Nne,ngp) )
 
         N     = 0.0
       dN_dxi  = 0.0

@@ -5,12 +5,12 @@ program Stokes
 
   implicit none
   ! - - - - - - - - - - * * * Variables que se usan aqui en main * * * * * * * - - - - - - - - - -
+  integer                           :: NoBV, NoBVcol, ngp, i, j ,mrow, ncol
   real, allocatable, dimension(:,:) :: Fbcsvp
-  integer           :: NoBV, NoBVcol, ngp!, i, mrow, ncol, ngp
   external :: SLEEP
   !========== S O L V E R
-  external :: mkl_dgetrfnp, dgetrf, dgetrs
-  integer                                :: S_m, S_n, S_lda, S_ldb, S_infoLU, S_info, S_nrhs
+  external                               :: mkl_dgetrfnp, dgetrf, dgetrs
+  integer                                :: S_m, S_n, S_lda, S_ldb, S_infoSOL, S_infoLU, S_nrhs
   integer, allocatable, dimension(:,:)   :: S_ipiv
   character*1                            :: S_trans
   ! - - - - - - - - - - - - - - - * * * Fin * * * * * * * - - - - - - - - - - - - - - - - 
@@ -29,8 +29,9 @@ program Stokes
   call ReadIntegerFile(50,"pelements.dat", 100,5, pelements)
   
   call GetQuadGauss(2,2,gauss_points, gauss_weights, ngp)
-  ! allocate( N(Nne,size(gauss_points,1)),dN_dxi(Nne,size(gauss_points,1)) ,dN_deta(Nne,size(gauss_points,1)) )
+  ! allocate( N(Nne,ngp), dN_dxi(Nne,ngp), dN_deta(Nne,ngp)
   call Quad8Nodes(gauss_points, ngp, N, dN_dxi, dN_deta)
+
 
   allocate(A_K(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes))
   
@@ -67,44 +68,49 @@ program Stokes
   print*,'= = = = = = = = = = = = = = = = = = = = = = = ='
   print*,''
   
-  print*,'!========== LU FACTORIZATION A = P*L*U'
-  CALL SLEEP(1)
-  ! call dgetrf( S_m, S_n, A_K, S_lda, S_ipiv, S_infoLU )
-  call mkl_dgetrfnp( S_m, S_n, A_K, S_lda, S_info )
-  PRINT *, "       !== Factorization completed "
-  PRINT*, 'S_info for LU Factorization', S_infoLU
-  PRINT*, 'SHAPE OF A_K_LU',SHAPE(A_K)
-  PRINT*, ' '  
+  print*,'!========== INITIALIZING LU FACTORIZATION A = P*L*U'
+  call sleep(2)
+  call dgetrf( S_m, S_n, A_K, S_lda, S_ipiv, S_infoLU )
+  ! call mkl_dgetrfnp( S_m, S_n, A_K, S_lda, S_infoLU )
+  if ( S_infoLU .eq. 0 ) then
+    print*,'!========== SYSTEM SOLVED WITH STATUS', S_infoLU, ', THE EXECUTION IS SUCCESSFUL.'
+  elseif(S_infoLU .lt. 0 )then
+    print*,'!========== SYSTEM SOLVED WITH STATUS', S_infoLU, 'THE',S_infoLU,'-TH PARAMETER HAD AN ILLEGAL VALUE.'
+  elseif(S_infoLU .gt. 0 )then
+    print*,'!========== THE FACTORIZATION HAS BEEN COMPLETED, BUT U_',S_infoLU, 'IS EXACTLY SINGULAR.'
+    print*, 'DIVISION BY 0 WILL OCCUR IF YOU USE THE FACTOR U FOR SOLVING A SYSTEM OF LINEAR EQUATIONS.'
+  endif
+  print*, '.'
+  print*, '.'
+  print*, '.'  
   print*,'!========== SOLVING SYSTEM OF EQUATIONS '
-  CALL SLEEP(1)
-  ! call dgetrs( S_trans, S_n, S_nrhs, A_K, S_lda, S_ipiv, Sv, S_ldb, S_info )
-
-  ! PRINT*, 'S_info for sol. of  Ax=b   ', S_info
-  ! PRINT*, 'SHAPE OF A_K_LU',SHAPE(Sv)
-  ! PRINT*, ' '  
-
-  ! DEALLOCATE(A_K, Sv, S_ipiv)
-  
-  ! do i = 1, 803
-  !   print*, S_ipiv(1,i)
-  ! end do
+  call sleep(2)
+  call dgetrs( S_trans, S_n, S_nrhs, A_K, S_lda, S_ipiv, Sv, S_ldb, S_infoSOL )
+  if ( S_infoSOL .eq. 0 ) then
+    print*,'!========== SYSTEM SOLVED WITH STATUS', S_infoSOL, ', THE EXECUTION IS SUCCESSFUL.'
+  elseif(S_infoSOL .lt. 0 )then
+    print*,'!========== SYSTEM SOLVED WITH STATUS', S_infoSOL, 'THE',S_infoSOL,'-TH PARAMETER HAD AN ILLEGAL VALUE.'
+  endif
+  call sleep(1)
+  print*,' '
   
   ! ========== Escribir en archivo la matriz global
-  
-  ! mrow = 2*n_nodes+n_pnodes 
-  ! ncol = 2*n_nodes+n_pnodes
-  ! open(unit=70, file='A_K_LU.dat', ACTION="write", STATUS="replace ")
-  ! do i=1,2*n_nodes+n_pnodes 
-  !   write(70, '(1000F20.9)')( A_K(i,j) ,j=1,2*n_nodes+n_pnodes)
-  ! end do
-  ! close(70)
+  mrow = 2*n_nodes+n_pnodes 
+  ncol = 2*n_nodes+n_pnodes
+  open(unit=70, file='A_K_LU.dat', ACTION="write", STATUS="replace ")
+  do i=1,2*n_nodes+n_pnodes 
+    write(70, '(1000F20.9)')( A_K(i,j) ,j=1,2*n_nodes+n_pnodes)
+  end do
+  close(70)
 
-  ! mrow = 2*n_nodes+n_pnodes 
-  ! ncol = 2*n_nodes+n_pnodes
-  ! open(unit=71, file='Sv.dat', ACTION="write", STATUS="replace ")
-  ! do i=1,2*n_nodes+n_pnodes 
-  !   write(71, '(1000F10.7)') Sv(i,1)
-  ! end do
-  ! close(71)
+  mrow = 2*n_nodes+n_pnodes 
+  ncol = 2*n_nodes+n_pnodes
+  open(unit=71, file='Sv.dat', ACTION="write", STATUS="replace ")
+  do i=1,2*n_nodes+n_pnodes 
+    write(71, '(1000F10.7)') Sv(i,1)
+  end do
+  close(71)
+
+  ! DEALLOCATE(A_K, Sv, S_ipiv)
 
 end program Stokes
