@@ -1,10 +1,11 @@
 module library
+  use Isoparametric
   Implicit None
 
   ! ! ! Aqui se declaran las variables globales ! ! !
 
   real                      :: materials
-  real, dimension(341,3)    :: nodes
+  real,    dimension(341,3) :: nodes
   integer, dimension(100,9) :: elements
   integer, dimension(341,2) :: pnodes
   integer, dimension(100,5) :: pelements
@@ -75,7 +76,6 @@ module library
 
     end subroutine
 
-    
     subroutine ReadMixFile(UnitNum, FileName, NumRows, NumCols, Real_Array)
       implicit none
 
@@ -100,160 +100,7 @@ module library
       close (UnitNum)
 
     end subroutine
-
-
-    subroutine GetQuadGauss(fila, columna, gauss_points, gauss_weights)
-      implicit none
-
-      integer,intent(in) :: fila, columna
-      double precision, allocatable, dimension(:,:),intent(out) :: gauss_points, gauss_weights
-      integer :: i,j,k
-      double precision, allocatable, dimension(:,:) :: w1, w2, w, x
-
-      allocate(gauss_points(fila*columna,2),gauss_weights(fila*columna,1))
-      allocate(w1(columna,1),w2(1,columna), x(columna,1))
-      allocate(w(columna,columna))
-
-      gauss_points = 0
-      gauss_weights = 0
-
-      if ( fila == 1 .and. columna == 1 ) then
-        x = 0.0
-        w = 4.0
-        else if (fila == 2 .and. columna == 2 ) then
-          x = reshape([-1.0/sqrt(3.0), 1.0/sqrt(3.0) ], [columna,1])
-          w1 = reshape([1.0, 1.0],[columna,1])
-          w2 = reshape([1.0, 1.0],[1,columna])
-          w = matmul(w1,w2)
-        else if (fila == 3 .and. columna == 3 ) then
-          x = reshape([-sqrt(3.0/5), 0.0, sqrt(3.0/5)], [columna,1])
-          w1 = reshape([5.0/9, 8/9.0, 5.0/9],[columna,1])
-          w2 = reshape([5.0/9, 8/9.0, 5.0/9],[1,columna])
-          w = matmul(w1,w2)
-        else
-        print*, 'Error calling GetQuadGauss\n'
-      end if
-
-      !for-loop block: set up the 2-D Gauss points and weights
-      k=1
-      do i=1,fila
-        do j=1, columna
-          gauss_points(k,1:2)= [x(i,1), x(j,1)]
-          gauss_weights(k,1) = w(i,j)     !En fortran un vector debe especificarse
-          k=k+1                           !como un arreglo de rango 2 es decir (1,n) o (n,1)
-        end do                            !mientras que en matlab solo con escribir (n)
-      end do
-
-
-      ! Aqui puedo poner un ngp = size(gauss_points,1) ! y declarar ngp con SAVE para tener siempre el valor de la variable ngp 
-
-      DEALLOCATE(w1, w2, x, w)
-      !Esta funcion no afecta al resultado pues se ha liberado la memoria para calcular pesos y puntos
-      !de Gauss mas no las variables que contienen pesos y puntos de gauus.
-    end subroutine GetQuadGauss
-
-    subroutine CompNDNatPointsQuad8(gauss_points, N, Nx, Ny)
-      implicit none
-
-      double precision, dimension(:,:), intent(in) :: gauss_points
-      double precision, allocatable, dimension(:,:), intent(out) :: N, Nx, Ny
-      double precision, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
-      integer, dimension(Nne,dim_prob) :: master_nodes
-      double precision    :: xi, eta, mn_xi, mn_eta
-      integer :: ngp, i, j, jj, k
-
-      !number of gauss points
-      ngp = size(gauss_points,1) ! esta puede quedar como variable global si se usa en alguna otra subrutina
-                                ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
-      allocate( N(Nne,ngp),Nx(Nne,ngp),Ny(Nne,ngp) )
-
-      N  = 0.0
-      Nx = 0.0
-      Ny = 0.0
-
-      xi_vector  = gauss_points(:,1)     ! xi-coordinate of point j
-      eta_vector = gauss_points(:,2)
-
-      !coordinates of the nodes of the master element
-      master_nodes = reshape([1, -1, -1, 1, 0, -1, 0, 1, 1, 1, -1, -1, 1, 0, -1, 0], [Nne,dim_prob])
-      !NOTA ** Para que el reshape funcione correctamente, o que produzca el par de valores deseado, primero se deben
-      !colocar todos los valores en x, luego todos los de y y luego, si hubiera todos los de z para que al acomodarse salga el par
-      !suponiendo un reshape de 3,2 debe acomodarse x1, x2, x3, y1, y2, y3 DUDA *Siempre es asi*
-
-      do j = 1, ngp
-        xi  = xi_vector(j)      ! xi-coordinate of point j
-        eta = eta_vector(j)     ! eta-coordinate of point j
-
-        N(5,j)=1.0/2*(1-xi**2)*(1+eta)
-        N(6,j)=1.0/2*(1-xi)*(1-eta**2)
-        N(7,j)=1.0/2*(1-xi**2)*(1-eta)
-        N(8,j)=1.0/2*(1+xi)*(1-eta**2)
-        Nx(5,j)=-xi*(1+eta)
-        Nx(6,j)=-1.0/2*(1-eta**2)
-        Nx(7,j)=-xi*(1-eta)
-        Nx(8,j)=1.0/2*(1-eta**2)
-        Ny(5,j)=1.0/2*(1-xi**2)
-        Ny(6,j)=(1-xi)*(-eta)
-        Ny(7,j)=-1.0/2*(1-xi**2)
-        Ny(8,j)=(1+xi)*(-eta)
-
-        do i = 1, 4
-          mn_xi = master_nodes(i,1)
-          mn_eta= master_nodes(i,2)
-          if (i==1) then
-            jj=8
-          else
-            jj=i+3
-          end if
-          k=i+4
-          N(i,j)=(1.0 + mn_xi*xi)*(1.0 + mn_eta*eta)/4.0 - 1.0/2*(N(jj,j)+N(k,j))
-          Nx(i,j)= mn_xi*(1.0 + mn_eta*eta)/4.0 - 1.0/2*(Nx(jj,j)+Nx(k,j))
-          Ny(i,j)= mn_eta*(1.0 + mn_xi*xi)/4.0 - 1.0/2*(Ny(jj,j)+Ny(k,j))
-
-        end do
-
-      end do
-
-    end subroutine CompNDNatPointsQuad8
-
-    subroutine CompNDNatPointsQuad4(gauss_points, Np)
-      implicit none
-
-      double precision, dimension(:,:), intent(in) :: gauss_points
-      double precision, allocatable, dimension(:,:), intent(out) :: Np
-      double precision, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
-      integer, dimension(Npne,dim_prob) :: master_nodes
-      double precision    :: xi, eta, mn_xi, mn_eta
-      integer :: ngp, i, j
-
-      ngp = size(gauss_points,1) 
-      !number of gauss points
-      ! esta puede quedar como variable global si se usa en alguna otra subrutina
-                                ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
-      allocate( Np(Npne,ngp))
-
-      Np  = 0.0
-      xi_vector  = gauss_points(:,1)     ! xi-coordinate of point j
-      eta_vector = gauss_points(:,2)
-
-      !coordinates of the nodes of the master element
-      master_nodes = reshape([1, -1, -1, 1, 1, 1, -1, -1], [Npne,dim_prob])
-      !NOTA ** Para que el reshape funcione correctamente, o que produzca el par de valores deseado, primero se deben
-      !colocar todos los valores en x, luego todos los de y y luego, si hubiera, todos los de z para que al acomodarse salga el par
-      !suponiendo un reshape de 3,2 debe acomodarse x1, x2, x3, y1, y2, y3 DUDA *Siempre debe ser es asi*
-
-      do j = 1, ngp
-        xi  = xi_vector(j)      ! xi-coordinate of point j
-        eta = eta_vector(j)     ! eta-coordinate of point j
-        do i = 1, 4
-          mn_xi = master_nodes(i,1)
-          mn_eta= master_nodes(i,2)
-          Np(i,j)=(1.0 + mn_xi*xi)*(1.0 + mn_eta*eta)/4.0 
-        end do
-      end do
-
-    end subroutine CompNDNatPointsQuad4
-                              
+                             
     subroutine SetElementNodes(elm_num, elements, nodes, element_nodes, node_id_map)
       implicit none
 
@@ -302,11 +149,11 @@ module library
 
     end subroutine PreassureElemNods
 
-    function J2D( element_nodes, Nx, Ny, Gp)
+    function J2D( element_nodes, dN_dxi, dN_deta, Gp)
       implicit none
 
       real, dimension(Nne,dim_prob), intent(in)            :: element_nodes
-      double precision, dimension(Nne,size(gauss_points) ), intent(in) :: Nx, Ny
+      double precision, dimension(Nne,size(gauss_points) ), intent(in) :: dN_dxi, dN_deta
       integer, intent(in)                                  :: Gp !esta variable se usara en el lazo principal con el numero de punto de gauss para evaluar las integrales elementales
       double precision, dimension(dim_prob,Nne)                        :: Basis2D
       double precision, dimension(1,Nne)                               :: Nxi, Neta
@@ -314,16 +161,24 @@ module library
 
 
       !con estas instrucciones extraigo la columna de Nx como renglon y lo guardo en Nxi, Gp se
-      !ira moviendo conforme la funcion J2D sea llamada en el lazo principal para cada elemento lo mismo para Neta con Ny
-      Nxi  = spread(Nx(:,Gp),dim = 1, ncopies= 1)
-      Neta = spread(Ny(:,Gp),dim = 1, ncopies= 1)
+      !ira moviendo conforme la funcion J2D sea llamada en el lazo principal para cada elemento lo mismo para Neta con dN_deta
+      Nxi  = spread(dN_dxi(:,Gp),dim = 1, ncopies= 1)
+      Neta = spread(dN_deta(:,Gp),dim = 1, ncopies= 1)
 
+      !Las siguientes tres lineas realizan de forma implicita el calculo de las derivadas
+      !espaciales es decir dN/dx and dN/dy (eq. 5.114 - 5.117). Las derivadas espaciales 
+      !no se calcula explicitamente, en su lugar se usa:
+        
+      !            d/dy = (d/deta)J^-1      (ver eq. 5.77 y 5.109)
+
+      ! Esta forma de 
       Basis2D(1,:) = Nxi(1,:)
       Basis2D(2,:) = Neta(1,:)
-
-      J2D = matmul(Basis2D,element_nodes)
-
-      ! J = J2D
+      J2D = matmul(Basis2D,element_nodes) !Aqui se usan directamente las derivadas (eqs 5.114-5.117) de las coordenadas fisicas
+                                          !respecto de las coordenadas del master element (isoparametric domain) para llenar la matriz Jacobiano.
+      ! De la subroutina Quad4Nodes or Quad8Nodes  ya se tienen las derivadas de las funciones de forma respecto a las coordenadas del master element
+      ! es decir dN/dxi and dN/deta contenidas en Basis 2D. Luego, se multiplican por element_nodes para completar el Jacobiano.
+      
 
       ! - - - * * * D U D A * * * - - -
         !Si el nombre de la funcion es el mismo que la variable donde se guarda, entonces no puedo declararla como
@@ -335,8 +190,6 @@ module library
 
         !Me marca un warning
       ! - - - * * * D U D A * * * - - -
-
-
 
       return
     end function J2D
@@ -422,11 +275,11 @@ module library
 
     end function CompH
 
-    function compBmat(Nx, Ny, Gp)
+    function compBmat(dN_dxi, dN_deta, Gp)
 
       implicit none
 
-      double precision, dimension(Nne,size(gauss_points) ) :: Nx, Ny
+      double precision, dimension(Nne,size(gauss_points) ) :: dN_dxi, dN_deta
       integer, intent (in) :: Gp
 
       ! real, dimension(4, 2*Nne)  :: B
@@ -436,8 +289,8 @@ module library
       integer::  i
 
       ! B = 0
-      Nxi  = spread(Nx(:,Gp),dim = 1, ncopies= 1)
-      Neta = spread(Ny(:,Gp),dim = 1, ncopies= 1)
+      Nxi  = spread(dN_dxi(:,Gp),dim = 1, ncopies= 1)
+      Neta = spread(dN_deta(:,Gp),dim = 1, ncopies= 1)
 
 
       do i=1, Nne
@@ -485,7 +338,7 @@ module library
 
     end subroutine AssembleK
 
-    subroutine GlobalK( A_K, Nx, Ny) !Al tener un solo parametro de salida puedo declararla como funcion
+    subroutine GlobalK( A_K, dN_dxi, dN_deta) !Al tener un solo parametro de salida puedo declararla como funcion
 
       implicit none
 
@@ -510,7 +363,7 @@ module library
       !- - - * * * * * * * * * - - -
 
       double precision, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(out) :: A_K  !Global Stiffnes matrix
-      double precision, dimension(Nne,size(gauss_points,1)), intent(in)               :: Nx, Ny
+      double precision, dimension(Nne,size(gauss_points,1)), intent(in)               :: dN_dxi, dN_deta
       double precision, allocatable, dimension(:,:)       :: Np
       double precision, dimension(2*Nne, 2*Nne)        :: ke
       double precision, dimension(dim_prob, dim_prob)     :: Jaco, Jinv
@@ -560,11 +413,11 @@ module library
         call SetElementNodes(e, elements, nodes, element_nodes, node_id_map)
         !do-loop: compute element stiffness matrix ke
         do gp  = 1, ngp
-          Jaco = J2D(element_nodes, Nx, Ny, gp)
+          Jaco = J2D(element_nodes, dN_dxi, dN_deta, gp)
           detJ = m22det(Jaco)
           Jinv = inv2x2(Jaco)
           Jb   = buildJb (Jinv)
-          B    = compBmat( Nx, Ny, gp)
+          B    = compBmat( dN_dxi, dN_deta, gp)
           HJ   = matmul(H,Jb)
           HJB  = matmul(HJ,B)
          HJB_T = transpose(HJB)
@@ -572,7 +425,7 @@ module library
          part2 = matmul(part1,HJB)
          part3 = part2 * detJ
          !aqui marcaba error por que gauss_weights es un vector columna y debe indicarse con dos indices
-         ke = ke + part3 * gauss_weights(gp,1)
+         ke = ke + part3 * gauss_weights(gp,1)  !
         end do
 
         call AssembleK(A_K, ke, node_id_map, 2) ! assemble global K
@@ -584,7 +437,7 @@ module library
       allocate (K12(n_nodes*2,n_pnodes),K12_T(n_pnodes,n_nodes*2))
       K12 = 0
       
-      call CompNDNatPointsQuad4(gauss_points, Np)
+      call Quad4Nodes(gauss_points, Np)
 
       do e = 1, n_elements
         kep = 0.0
@@ -592,12 +445,12 @@ module library
         call PreassureElemNods(e, pelements, nodes, pelement_nodes, pnode_id_map) !--Arreglar esto para que sea con p en todos los arguments
         ! for-loop: compute element stiffness matrix ke     
         do gp  = 1, ngp
-          Jaco = J2D(element_nodes, Nx, Ny, gp)
+          Jaco = J2D(element_nodes, dN_dxi, dN_deta, gp)
           detJ = m22det(Jaco)
           Jinv = inv2x2(Jaco)
           dN = 0.0
           do j = 1, Nne
-            part4(j,:) = [ Nx(j,gp), Ny(j,gp) ]  
+            part4(j,:) = [ dN_dxi(j,gp), dN_deta(j,gp) ]  
             part5 = reshape([part4(j,:)],[2,1])           !--Revisar por que en la linea 514 y 515 si se puede hacer
             A =  matmul(Jinv,part5)           !Tuve que separar todas las multiplicaciones para que funcione 
                                               ! pues el resultado de matmul debe guardarse en otra variable, A sino marca error
@@ -689,8 +542,6 @@ module library
       ! close(2)
       
     end subroutine GlobalK
-
-
 
     subroutine SetBounCond( NoBV, NoBVcol )
       !========================================================================

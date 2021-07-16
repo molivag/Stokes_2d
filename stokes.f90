@@ -1,10 +1,13 @@
 program Stokes
   use library
+  use Isoparametric
+
 
   implicit none
   ! - - - - - - - - - - * * * Variables que se usan aqui en main * * * * * * * - - - - - - - - - -
   real, allocatable, dimension(:,:) :: Fbcsvp
-  integer           :: NoBV, NoBVcol, i, j, mrow, ncol
+  integer           :: NoBV, NoBVcol, ngp!, i, mrow, ncol, ngp
+  
   !========== S O L V E R
   external :: mkl_dgetrfnp, dgetrf, dgetrs
   integer                                :: S_m, S_n, S_lda, S_ldb, S_infoLU, S_info, S_nrhs
@@ -14,29 +17,20 @@ program Stokes
   
   ! integer :: i, j !Estas variables declaradas solo son de prueba para ir testeando la funcionalidad del codigom, se cambiaran por el bucle principal en compK
   double precision, allocatable, dimension(:,:) :: A_K
-  double precision, allocatable, dimension(:,:) :: N, Nx, Ny
+  double precision, allocatable, dimension(:,:) :: N, dN_dxi, dN_deta
   double precision, allocatable, dimension(:,:) :: Sv
 
-  ! real, dimension(2,2) :: Jaco
+  
 
-  ! - - - - - Aqui declaro funciones para ir probando el codigo
-  ! real, dimension(3,4)                          :: MatH
-  ! real, dimension(dim_prob,dim_prob)            :: Jaco, Jinv
-  ! real, dimension(4,2*n_nodes_per_element)      :: B
-  ! real, dimension(2*dim_prob, 2*dim_prob)       :: Jb
-  ! real, dimension(3,dim_prob*dim_prob)          :: HJ
-  ! real, dimension(3,2*n_nodes_per_element)      :: HJB
-  ! real, dimension(3,2*n_nodes_per_element)     :: matmul3
-  ! - - - - - Aqui declaro funciones para ir probando el codigo
-
-  call ReadRealFile(10,"nodes.dat", 341,3, nodes)
-  call ReadIntegerFile(20,"elements.dat", 100,9, elements)
-  call ReadReal(30,"materials.dat", materials)
-  call ReadIntegerFile(40,"pnodes.dat", 341,2, pnodes)
-  call ReadIntegerFile(50,"pelements.dat", 100,5, pelements)
-  call GetQuadGauss(2,2,gauss_points, gauss_weights)
-  ! allocate( N(Nne,size(gauss_points,1)),Nx(Nne,size(gauss_points,1)) ,Ny(Nne,size(gauss_points,1)) )
-  call CompNDNatPointsQuad8(gauss_points, N, Nx, Ny)
+  call ReadRealFile(10,"dat/nodes.dat", 341,3, nodes)
+  call ReadIntegerFile(20,"dat/elements.dat", 100,9, elements)
+  call ReadReal(30,"dat/materials.dat", materials)
+  call ReadIntegerFile(40,"dat/pnodes.dat", 341,2, pnodes)
+  call ReadIntegerFile(50,"dat/pelements.dat", 100,5, pelements)
+  
+  call GetQuadGauss(2,2,gauss_points, gauss_weights, ngp)
+  ! allocate( N(Nne,size(gauss_points,1)),dN_dxi(Nne,size(gauss_points,1)) ,dN_deta(Nne,size(gauss_points,1)) )
+  call Quad8Nodes(gauss_points, ngp, N, dN_dxi, dN_deta)
 
   allocate(A_K(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes))
   
@@ -46,7 +40,7 @@ program Stokes
   call ReadMixFile(60,"Fbcsvp.dat", NoBV, NoBVcol, Fbcsvp)!Llamo el archivo de valores en la frontera y lo guardo en Fbcsvp
   print*,''
 
-  call GlobalK( A_K, Nx, Ny)
+  call GlobalK( A_K, dN_dxi, dN_deta)
 
   allocate(Sv(2*n_nodes+n_pnodes, 1))
   Sv = 0 !initializing source vector (Sv) 
@@ -84,11 +78,11 @@ program Stokes
 
   call dgetrs( S_trans, S_n, S_nrhs, A_K, S_lda, S_ipiv, Sv, S_ldb, S_info )
 
-  ! PRINT*, 'S_info for sol. of  Ax=b   ', S_info
+  PRINT*, 'S_info for sol. of  Ax=b   ', S_info
   ! PRINT*, 'SHAPE OF A_K_LU',SHAPE(Sv)
   ! PRINT*, ' '  
 
-  ! DEALLOCATE(A_K, Sv, S_ipiv)
+  DEALLOCATE(A_K, Sv, S_ipiv)
   
   ! do i = 1, 803
   !   print*, S_ipiv(1,i)
@@ -104,12 +98,12 @@ program Stokes
   ! end do
   ! close(70)
 
-  mrow = 2*n_nodes+n_pnodes 
-  ncol = 2*n_nodes+n_pnodes
-  open(unit=71, file='Sv.dat', ACTION="write", STATUS="replace ")
-  do i=1,2*n_nodes+n_pnodes 
-    write(71, '(1000F10.7)') Sv(i,1)
-  end do
-  close(71)
+  ! mrow = 2*n_nodes+n_pnodes 
+  ! ncol = 2*n_nodes+n_pnodes
+  ! open(unit=71, file='Sv.dat', ACTION="write", STATUS="replace ")
+  ! do i=1,2*n_nodes+n_pnodes 
+  !   write(71, '(1000F10.7)') Sv(i,1)
+  ! end do
+  ! close(71)
 
 end program Stokes
