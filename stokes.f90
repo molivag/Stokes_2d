@@ -7,7 +7,7 @@ program Stokes
   ! - - - - - - - - - - * * * Variables que se usan aqui en main * * * * * * * - - - - - - - - - -
   real, allocatable, dimension(:,:) :: Fbcsvp
   integer           :: NoBV, NoBVcol, ngp!, i, mrow, ncol, ngp
-  
+  external :: SLEEP
   !========== S O L V E R
   external :: mkl_dgetrfnp, dgetrf, dgetrs
   integer                                :: S_m, S_n, S_lda, S_ldb, S_infoLU, S_info, S_nrhs
@@ -22,11 +22,11 @@ program Stokes
 
   
 
-  call ReadRealFile(10,"dat/nodes.dat", 341,3, nodes)
-  call ReadIntegerFile(20,"dat/elements.dat", 100,9, elements)
-  call ReadReal(30,"dat/materials.dat", materials)
-  call ReadIntegerFile(40,"dat/pnodes.dat", 341,2, pnodes)
-  call ReadIntegerFile(50,"dat/pelements.dat", 100,5, pelements)
+  call ReadRealFile(10,"nodes.dat", 341,3, nodes)
+  call ReadIntegerFile(20,"elements.dat", 100,9, elements)
+  call ReadReal(30,"materials.dat", materials)
+  call ReadIntegerFile(40,"pnodes.dat", 341,2, pnodes)
+  call ReadIntegerFile(50,"pelements.dat", 100,5, pelements)
   
   call GetQuadGauss(2,2,gauss_points, gauss_weights, ngp)
   ! allocate( N(Nne,size(gauss_points,1)),dN_dxi(Nne,size(gauss_points,1)) ,dN_deta(Nne,size(gauss_points,1)) )
@@ -51,7 +51,6 @@ program Stokes
   
   
   print*,'!==================== S O L V E R (L A P A C K) ====================!'
-  print*,'!========== LU FACTORIZATION A = P*L*U'
   S_m   = size(A_K,1)
   S_n   = size(A_K,2)
   S_lda = max(1,size(A_K,1))
@@ -59,7 +58,6 @@ program Stokes
   S_trans = 'N'
   S_nrhs  = size(SV,1)
   S_ldb = max(1,size(Sv,1))
-  
   print*,''
   print*,'= = = = = Solver Parameters = = = = = = = = = ='
   print*,'= shape of S_ipiv  ',shape(S_ipiv)
@@ -67,22 +65,25 @@ program Stokes
   print*,'= Leading dimension of Sv      ',S_ldb
   print*,'= Number of right-hand sides   ',S_nrhs
   print*,'= = = = = = = = = = = = = = = = = = = = = = = ='
-  call dgetrf( S_m, S_n, A_K, S_lda, S_ipiv, S_infoLU )
-  ! call mkl_dgetrfnp( S_m, S_n, A_K, S_lda, S_info )
   print*,''
-  PRINT *, "!========== Factorization completed "
+  
+  print*,'!========== LU FACTORIZATION A = P*L*U'
+  CALL SLEEP(1)
+  ! call dgetrf( S_m, S_n, A_K, S_lda, S_ipiv, S_infoLU )
+  call mkl_dgetrfnp( S_m, S_n, A_K, S_lda, S_info )
+  PRINT *, "       !== Factorization completed "
   PRINT*, 'S_info for LU Factorization', S_infoLU
   PRINT*, 'SHAPE OF A_K_LU',SHAPE(A_K)
   PRINT*, ' '  
   print*,'!========== SOLVING SYSTEM OF EQUATIONS '
+  CALL SLEEP(1)
+  ! call dgetrs( S_trans, S_n, S_nrhs, A_K, S_lda, S_ipiv, Sv, S_ldb, S_info )
 
-  call dgetrs( S_trans, S_n, S_nrhs, A_K, S_lda, S_ipiv, Sv, S_ldb, S_info )
-
-  PRINT*, 'S_info for sol. of  Ax=b   ', S_info
+  ! PRINT*, 'S_info for sol. of  Ax=b   ', S_info
   ! PRINT*, 'SHAPE OF A_K_LU',SHAPE(Sv)
   ! PRINT*, ' '  
 
-  DEALLOCATE(A_K, Sv, S_ipiv)
+  ! DEALLOCATE(A_K, Sv, S_ipiv)
   
   ! do i = 1, 803
   !   print*, S_ipiv(1,i)
