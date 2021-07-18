@@ -178,14 +178,10 @@ module Isoparametric
       double precision    :: xi, eta, mn_xi, mn_eta
       integer             :: i, j
 
-      ! !number of gauss points
-      ! ngp = size(gauss_points,1) ! esta puede quedar como variable global si se usa en alguna otra subrutina
-      !                           ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
-      allocate( N(Nne,ngp),dN_dxi(Nne,ngp), dN_deta(Nne,ngp) )
+      !si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
+      !Al parecer este alojamiento de memoria evita el error despues de ejecutar LAPACK
+      
 
-        N     = 0.0
-      dN_dxi  = 0.0
-      dN_deta = 0.0
 
       xi_vector  = gauss_points(:,1)     ! xi-coordinate of point j
       eta_vector = gauss_points(:,2)
@@ -202,17 +198,38 @@ module Isoparametric
       ! mas no las derivadas dN/dx and dN/dy completas
            
       !do loop: compute N, dN_dxi, dN_deta
-      do j=1,ngp                              ! columns for point 1,2 ...
-        xi=xi_vector(j);                      ! xi-coordinate of point j 
-        eta=eta_vector(j);                    ! eta-coordinate of point j 
-        do i=1,4                              ! rows for N1, N2, ...
-          mn_xi = master_nodes(i,1)
-          mn_eta= master_nodes(i,2)
-          N(i,j)=(1.0 + mn_xi*xi)*(1.0 + mn_eta*eta)/4.0        ! Ni(xi,eta)
-          dN_dxi(i,j)= mn_xi*(1.0 + mn_eta*eta)/4.0             ! dNi/dxi(xi,eta)
-          dN_deta(i,j)= mn_eta*(1.0 + mn_xi*xi )/4.0            ! dNi/deta(xi,eta
+      if (present(dN_dxi) .and. present(dN_deta))then
+        allocate(dN_dxi(Nne,ngp) )
+        allocate(dN_deta(Nne,ngp) )
+        dN_dxi  = 0.0
+        dN_deta = 0.0
+        
+        do j=1,ngp                              ! columns for point 1,2 ...
+          xi=xi_vector(j);                      ! xi-coordinate of point j 
+          eta=eta_vector(j);                    ! eta-coordinate of point j 
+          do i=1,4                              ! rows for N1, N2, ...
+            mn_xi = master_nodes(i,1)
+            mn_eta= master_nodes(i,2)
+            dN_dxi(i,j)= mn_xi*(1.0 + mn_eta*eta)/4.0             ! dNi/dxi(xi,eta)
+            dN_deta(i,j)= mn_eta*(1.0 + mn_xi*xi )/4.0            ! dNi/deta(xi,eta
+          end do
         end do
-      end do
+      else
+        allocate(N(Nne,ngp) )
+        N     = 0.0
+        do j=1,ngp                              ! columns for point 1,2 ...
+          xi=xi_vector(j);                      ! xi-coordinate of point j 
+          eta=eta_vector(j);                    ! eta-coordinate of point j 
+          do i=1,4                              ! rows for N1, N2, ...
+            mn_xi = master_nodes(i,1)
+            mn_eta= master_nodes(i,2)
+            N(i,j)=(1.0 + mn_xi*xi)*(1.0 + mn_eta*eta)/4.0        ! Ni(xi,eta)
+          end do
+        end do
+
+      endif
+
+
       
 
     end subroutine Quad4Nodes
