@@ -30,9 +30,9 @@ program Stokes
   
   call GetQuadGauss(3,3,gauss_points, gauss_weights, ngp)
   
-  allocate( N(Nne,ngp))
-  allocate( dN_dxi(Nne,ngp))
-  allocate( dN_deta(Nne,ngp))
+  allocate( N(nUne,ngp))
+  allocate( dN_dxi(nUne,ngp))
+  allocate( dN_deta(nUne,ngp))
   call Quad8Nodes(gauss_points, ngp, N, dN_dxi, dN_deta)
 
 
@@ -77,7 +77,7 @@ program Stokes
   if ( S_infoLU .eq. 0 ) then
     print*,'!========== FACTORIZATION DONE WITH STATUS', S_infoLU, ', THE EXECUTION IS SUCCESSFUL.'
   elseif(S_infoLU .lt. 0 )then
-    print*,'!========== MATTRIX FACTORIZED WITH STATUS', S_infoLU, 'THE',S_infoLU,'-TH PARAMETER HAD AN ILLEGAL VALUE.'
+    print*,'!========== MATRIX FACTORIZED WITH STATUS', S_infoLU, 'THE',S_infoLU,'-TH PARAMETER HAD AN ILLEGAL VALUE.'
   elseif(S_infoLU .gt. 0 )then
     print*,'!========== THE FACTORIZATION HAS BEEN COMPLETED, BUT U_',S_infoLU, 'IS EXACTLY SINGULAR.'
     print*, 'DIVISION BY 0 WILL OCCUR IF YOU USE THE FACTOR U FOR SOLVING A SYSTEM OF LINEAR EQUATIONS.'

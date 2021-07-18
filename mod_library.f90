@@ -9,12 +9,13 @@ module library
   integer, dimension(100,9) :: elements
   integer, dimension(341,2) :: pnodes
   integer, dimension(100,5) :: pelements
+
+  integer, parameter        :: MAXelements = size(elements,1)
   integer, parameter        :: n_nodes = size(nodes,1)
   integer, parameter        :: n_pnodes = 121 !Duda, como lo tomo desde el txt es decir   n_pnodes = maxval(pnodes(:,2))
-  integer, parameter        :: n_elements = size(elements,1)
-  integer, parameter        :: Nne = size(elements,2)-1     !Number of nodes in the element
-  integer, parameter        :: Npne = size(pelements,2)-1   !Number of pnodes in the eleement
-  integer, parameter        :: dim_prob = size(nodes,2)-1 !dimension del problema
+  integer, parameter        :: nUne = size(elements,2)-1    !Number of velocity nodes in the element
+  integer, parameter        :: nPne = size(pelements,2)-1   !Number of preasure nodes in the eleement
+  integer, parameter        :: dim_prob = size(nodes,2)-1   !Dimension del problema
 
   double precision, allocatable, dimension(:,:) :: gauss_points, gauss_weights !Verificar si debe ser global---> Si, se usa en la funcion ComputeK
 
@@ -267,15 +268,15 @@ module library
       integer, dimension(100,9),  intent(in)::  elements
       real, dimension(341,3), intent(in)    ::  nodes
       integer,intent(in)                    :: elm_num ! number of element for each elemental integral in do of K global
-      real, dimension(Nne,dim_prob), intent(out) :: element_nodes
-      integer, dimension(Nne,1), intent(out)     :: node_id_map
+      real, dimension(nUne,dim_prob), intent(out) :: element_nodes
+      integer, dimension(nUne,1), intent(out)     :: node_id_map
       integer                               :: i,j, global_node_id
 
 
       element_nodes = 0.0
       node_id_map = 0.0
 
-      do i = 1, Nne
+      do i = 1, nUne
         global_node_id = elements(elm_num,i+1)
         do j=1 ,dim_prob
           element_nodes(i,j) = nodes(global_node_id,j+1)
@@ -291,15 +292,15 @@ module library
       integer, dimension(100,5),  intent(in)::  pelements
       real, dimension(341,3), intent(in)    ::  nodes
       integer,intent(in)                    :: elm_num ! number of element for each elemental integral in do of K global
-      real, dimension(Npne,dim_prob), intent(out) :: pelement_nodes
-      integer, dimension(Npne,1), intent(out)     :: pnode_id_map
+      real, dimension(nPne,dim_prob), intent(out) :: pelement_nodes
+      integer, dimension(nPne,1), intent(out)     :: pnode_id_map
       integer                               :: i,j, global_node_id
 
 
       pelement_nodes = 0.0
       pnode_id_map = 0.0
 
-      do i = 1, Npne
+      do i = 1, nPne
         global_node_id = pelements(elm_num,i+1)
         do j=1 ,dim_prob
           pelement_nodes(i,j) = nodes(global_node_id,j+1)
@@ -312,11 +313,11 @@ module library
     function J2D( element_nodes, dN_dxi, dN_deta, Gp)
       implicit none
 
-      real, dimension(Nne,dim_prob), intent(in)            :: element_nodes
-      double precision, dimension(Nne,size(gauss_points) ), intent(in) :: dN_dxi, dN_deta
+      real, dimension(nUne,dim_prob), intent(in)            :: element_nodes
+      double precision, dimension(nUne,size(gauss_points) ), intent(in) :: dN_dxi, dN_deta
       integer, intent(in)                                  :: Gp !esta variable se usara en el lazo principal con el numero de punto de gauss para evaluar las integrales elementales
-      double precision, dimension(dim_prob,Nne)                        :: Basis2D
-      double precision, dimension(1,Nne)                               :: Nxi, Neta
+      double precision, dimension(dim_prob,nUne)                        :: Basis2D
+      double precision, dimension(1,nUne)                               :: Nxi, Neta
       double precision, dimension(dim_prob,dim_prob)                   :: J2D
 
 
@@ -439,12 +440,12 @@ module library
 
       implicit none
 
-      double precision, dimension(Nne,size(gauss_points) ) :: dN_dxi, dN_deta
+      double precision, dimension(nUne,size(gauss_points) ) :: dN_dxi, dN_deta
       integer, intent (in) :: Gp
 
-      ! real, dimension(4, 2*Nne)  :: B
-      double precision, dimension(4, 2*Nne)  :: compBmat
-      double precision, dimension(1, Nne)    :: Nxi, Neta
+      ! real, dimension(4, 2*nUne)  :: B
+      double precision, dimension(4, 2*nUne)  :: compBmat
+      double precision, dimension(1, nUne)    :: Nxi, Neta
 
       integer::  i
 
@@ -453,7 +454,7 @@ module library
       Neta = spread(dN_deta(:,Gp),dim = 1, ncopies= 1)
 
 
-      do i=1, Nne
+      do i=1, nUne
         compBmat(1,2*i-1)= Nxi(1,i)
         compBmat(3,2*i)  = Nxi(1,i)
         compBmat(2,2*i-1)= Neta(1,i)
@@ -473,18 +474,18 @@ module library
 
       implicit none
       real(8), dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(in out)  :: K !Global Stiffnes matrix
-      real(8), dimension(2*Nne, 2*Nne), intent(in)    :: ke
-      integer, dimension(Nne,1), intent(in)           :: node_id_map
+      real(8), dimension(2*nUne, 2*nUne), intent(in)    :: ke
+      integer, dimension(nUne,1), intent(in)           :: node_id_map
       integer, intent(in)                             :: ndDOF 
       integer :: i, j, row_node, row, col_node, col !nodal Degrees of Freedom
 
       !K debe llevar inout por que entra como variable (IN) pero en esta funcion se modifica (out)
 
-      do i = 1, Nne
+      do i = 1, nUne
         row_node = node_id_map(i,1)
         row = ndDOF*row_node - (ndDOF-1)
 
-        do j = 1, Nne
+        do j = 1, nUne
           col_node = node_id_map(j,1)
           col = ndDOF*col_node - (ndDOF-1)
           K(row:row+ndDOF-1, col:col+ndDOF-1) =  K(row:row+ndDOF-1, col:col+ndDOF-1) + &
@@ -518,22 +519,22 @@ module library
 
         ! n_nodes               Ya declarado como variable global
         ! n_pnodes              Ya declarado como variable global
-        ! n_elements            Ya declarado como variable global
-        ! Nne   Ya declarado como variable global
+        ! MAXelements            Ya declarado como variable global
+        ! nUne   Ya declarado como variable global
       !- - - * * * * * * * * * - - -
 
       double precision, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(out) :: A_K  !Global Stiffnes matrix
-      double precision, dimension(Nne,size(gauss_points,1)), intent(in)               :: dN_dxi, dN_deta
-      double precision, allocatable, dimension(:,:)       :: Np, dd, ddd
-      double precision, dimension(2*Nne, 2*Nne)        :: ke
+      double precision, dimension(nUne,size(gauss_points,1)), intent(in)               :: dN_dxi, dN_deta
+      double precision, allocatable, dimension(:,:)       :: Np
+      double precision, dimension(2*nUne, 2*nUne)        :: ke
       double precision, dimension(dim_prob, dim_prob)     :: Jaco, Jinv
       double precision                                    :: detJ
       real,  dimension(3,3)                               :: cc, C
       double precision, dimension(2*dim_prob, 2*dim_prob) :: Jb
-      double precision, dimension(4,2*Nne)                :: B
+      double precision, dimension(4,2*nUne)                :: B
       double precision, dimension(3,dim_prob*dim_prob)    :: HJ
-      double precision, dimension(3,2*Nne)                :: HJB
-      double precision, dimension(2*Nne,3)                :: HJB_T
+      double precision, dimension(3,2*nUne)                :: HJB
+      double precision, dimension(2*nUne,3)                :: HJB_T
       real, dimension(3,4)                    :: H
       double precision, dimension(16,3)                   :: part1
       double precision, dimension(16,16)                  :: part2
@@ -549,11 +550,11 @@ module library
       double precision, dimension(4,1)                    :: part6
       double precision, dimension(1,4)                    :: part7
       double precision, dimension(16,4)                   :: part8
-      double precision, dimension(4*Npne,1)               :: dN
-      integer, dimension(Nne,1)               :: node_id_map
-      real, dimension(Nne,dim_prob)           :: element_nodes
-      integer, dimension(Npne,1)              :: pnode_id_map
-      real, dimension(Npne,dim_prob)          :: pelement_nodes
+      double precision, dimension(4*nPne,1)               :: dN
+      integer, dimension(nUne,1)               :: node_id_map
+      real, dimension(nUne,dim_prob)           :: element_nodes
+      integer, dimension(nPne,1)              :: pnode_id_map
+      real, dimension(nPne,dim_prob)          :: pelement_nodes
 
       integer                                 :: gp, ngp, e, i,j, row_node, row 
       integer                                 :: col_node, pnode_id, col!, mrow, ncol
@@ -567,7 +568,7 @@ module library
       H  = CompH()
       
       !elements loop for K1-1 block Global K
-      do e = 1, n_elements
+      do e = 1, MAXelements
         ke = 0
         Jb = 0
         call SetElementNodes(e, elements, nodes, element_nodes, node_id_map)
@@ -593,13 +594,13 @@ module library
       end do
 
       !Setup for K1-2 block
-      ! Npne is declared at the top as parameter
+      ! nPne is declared at the top as parameter
       allocate (K12(n_nodes*2,n_pnodes),K12_T(n_pnodes,n_nodes*2))
       K12 = 0
       
-      call Quad4Nodes(gauss_points, ngp, Np, dd,ddd)
+      call Quad4Nodes(gauss_points, ngp, Np)
 
-      do e = 1, n_elements
+      do e = 1, MAXelements
         kep = 0.0
         call SetElementNodes(e, elements, nodes, element_nodes, node_id_map)
         call PreassureElemNods(e, pelements, nodes, pelement_nodes, pnode_id_map) !--Arreglar esto para que sea con p en todos los arguments
@@ -609,7 +610,7 @@ module library
           detJ = m22det(Jaco)
           Jinv = inv2x2(Jaco)
           dN = 0.0
-          do j = 1, Nne
+          do j = 1, nUne
             part4(j,:) = [ dN_dxi(j,gp), dN_deta(j,gp) ]  
             part5 = reshape([part4(j,:)],[2,1])           !--Revisar por que en la linea 514 y 515 si se puede hacer
             A =  matmul(Jinv,part5)           !Tuve que separar todas las multiplicaciones para que funcione 
@@ -623,11 +624,11 @@ module library
         end do  
       
         ! for-loop: assemble ke into global Kp
-        do i = 1, Nne
+        do i = 1, nUne
           
           row_node = node_id_map(i,1)
           row = 2*row_node - 1
-          do j = 1, Npne
+          do j = 1, nPne
             col_node = pnode_id_map(j,1)
             pnode_id = pnodes(col_node,2)
             col = pnode_id
@@ -657,13 +658,13 @@ module library
           !   print*, ' '
           !   print*, 'pelements_nodes'
           !   print*, ' '
-          !   do i = 1,Npne
+          !   do i = 1,nPne
           !     print*, pelement_nodes(i,:)
           !   end do
           !   print*, ' '
           !   print*, 'pnode_id_map'
           !   print*, ' '
-          !   do i = 1,Npne
+          !   do i = 1,nPne
           !     print*, pnode_id_map(i,:)
           !   end do
         !Y hasta aqui para comprobar la matriz K12
