@@ -105,13 +105,15 @@ program Stokes
   ! end do
   ! close(70)
 
-  ! mrow = 2*n_nodes+n_pnodes 
-  ! ncol = 2*n_nodes+n_pnodes
-  ! open(unit=71, file='Sv.dat', ACTION="write", STATUS="replace ")
-  ! do i=1,2*n_nodes+n_pnodes 
-  !   write(71, '(1000F10.7)') Sv(i,1)
-  ! end do
-  ! close(71)
+  mrow = 2*n_nodes+n_pnodes 
+  ncol = 2*n_nodes+n_pnodes
+  open(unit=71, file='Sv.dat', ACTION="write", STATUS="replace ")
+  do i=1,2*n_nodes+n_pnodes 
+    write(71, '(1000F10.7)') Sv(i,1)
+  end do
+  close(71)
+
+  ! DEALLOCATE(A_K, Sv, S_ipiv)
 
   
   DEALLOCATE( N)
