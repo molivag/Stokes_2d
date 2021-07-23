@@ -5,12 +5,12 @@ program Stokes
 
   implicit none
   ! - - - - - - - - - - * * * Variables que se usan aqui en main * * * * * * * - - - - - - - - - -
-  integer                           :: NoBV, NoBVcol, ngp!, i, j ,mrow, ncol
+  integer                           :: NoBV, NoBVcol!, i, j ,mrow, ncol
   real, allocatable, dimension(:,:) :: Fbcsvp
   external :: SLEEP
   !========== S O L V E R
   external                               :: mkl_dgetrfnp, dgetrf, dgetrs
-  integer                                :: S_m, S_n, S_lda, S_ldb, S_infoSOL, S_infoLU, S_nrhs
+  integer                                :: S_m, S_n, S_lda, S_ldb, S_infoLU, S_nrhs !, S_infoSOL
   integer, allocatable, dimension(:,:)   :: S_ipiv
   character*1                            :: S_trans
   ! - - - - - - - - - - - - - - - * * * Fin * * * * * * * - - - - - - - - - - - - - - - - 
@@ -28,12 +28,13 @@ program Stokes
   call ReadIntegerFile(40,"pnodes.dat", 341,2, pnodes)
   call ReadIntegerFile(50,"pelements.dat", 100,5, pelements)
   
-  call GetQuadGauss(3,3,gauss_points, gauss_weights, ngp)
+  call GetQuadGauss(ngp,ngp,gauss_points, gauss_weights, totGp)
   
-  allocate( N(nUne,ngp))
-  allocate( dN_dxi(nUne,ngp))
-  allocate( dN_deta(nUne,ngp))
-  call Quad8Nodes(gauss_points, ngp, N, dN_dxi, dN_deta)
+  ! allocate( N(nUne,totGp))
+  ! allocate( dN_dxi(nUne,totGp))
+  ! allocate( dN_deta(nUne,totGp))
+  
+  call Quad8Nodes(gauss_points, N, dN_dxi, dN_deta)
 
 
   allocate(A_K(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes))
@@ -105,13 +106,13 @@ program Stokes
   ! end do
   ! close(70)
 
-  mrow = 2*n_nodes+n_pnodes 
-  ncol = 2*n_nodes+n_pnodes
-  open(unit=71, file='Sv.dat', ACTION="write", STATUS="replace ")
-  do i=1,2*n_nodes+n_pnodes 
-    write(71, '(1000F10.7)') Sv(i,1)
-  end do
-  close(71)
+  ! mrow = 2*n_nodes+n_pnodes 
+  ! ncol = 2*n_nodes+n_pnodes
+  ! open(unit=71, file='Sv.dat', ACTION="write", STATUS="replace ")
+  ! do i=1,2*n_nodes+n_pnodes 
+  !   write(71, '(1000F10.7)') Sv(i,1)
+  ! end do
+  ! close(71)
 
   ! DEALLOCATE(A_K, Sv, S_ipiv)
 
