@@ -4,18 +4,35 @@ module library
 
   ! ! ! Aqui se declaran las variables globales ! ! !
 
-  real                      :: materials
-  real,    dimension(341,3) :: nodes
-  integer, dimension(100,9) :: elements
-  integer, dimension(341,2) :: pnodes
-  integer, dimension(100,5) :: pelements
+  integer, parameter :: Dp        = 2     !Dimension del problema 
+  integer, parameter :: Nelem     = 100   !Number of elements
+  integer, parameter :: n_nodes   = 341   !Total number of velocity nodes
+  integer, parameter :: n_pnodes  = 121   !Total number of preasure nodes MAXVAL(pnodes,2)
+  integer, parameter :: nUne      = 8     !Number of velocity nodes in the element
+  integer, parameter :: nPne      = 4     !Number of preasure nodes in the element
+  integer, parameter :: ngp       = 3     !Number of Gauss points for quadrature  
 
-  integer, parameter        :: MAXelements = size(elements,1)
-  integer, parameter        :: n_nodes = size(nodes,1)
-  integer, parameter        :: n_pnodes = 121 !Duda, como lo tomo desde el txt es decir   n_pnodes = maxval(pnodes(:,2))
-  integer, parameter        :: nUne = size(elements,2)-1    !Number of velocity nodes in the element
-  integer, parameter        :: nPne = size(pelements,2)-1   !Number of preasure nodes in the eleement
-  integer, parameter        :: dim_prob = size(nodes,2)-1   !Dimension del problema
+  integer, dimension(Nelem, nUne + 1) :: elements
+  integer, dimension(Nelem, nPne + 1) :: pelements  
+  real,    dimension(n_nodes, Dp + 1) :: nodes
+  integer, dimension(n_nodes, 2)      :: pnodes
+  real                                :: materials
+
+
+
+  ! integer, dimension(100,9) :: elements
+  ! integer, dimension(100,5) :: pelements  
+  ! real,    dimension(341,3) :: nodes
+  ! integer, dimension(341,2) :: pnodes
+  ! real                      :: materials
+
+
+  ! integer, parameter        :: Nelem = size(elements,1)
+  ! integer, parameter        :: n_nodes = size(nodes,1)
+  ! integer, parameter        :: n_pnodes = 121 !Duda, como lo tomo desde el txt es decir   n_pnodes = maxval(pnodes(:,2))
+  ! integer, parameter        :: nUne = size(elements,2)-1    !Number of velocity nodes in the element
+  ! integer, parameter        :: nPne = size(pelements,2)-1   !Number of preasure nodes in the eleement
+  ! integer, parameter        :: Dp = size(nodes,2)-1   !Dimension del problema
 
   double precision, allocatable, dimension(:,:) :: gauss_points, gauss_weights !Verificar si debe ser global---> Si, se usa en la funcion ComputeK
 
@@ -268,7 +285,7 @@ module library
       integer, dimension(100,9),  intent(in)::  elements
       real, dimension(341,3), intent(in)    ::  nodes
       integer,intent(in)                    :: elm_num ! number of element for each elemental integral in do of K global
-      real, dimension(nUne,dim_prob), intent(out) :: element_nodes
+      real, dimension(nUne,Dp), intent(out) :: element_nodes
       integer, dimension(nUne,1), intent(out)     :: node_id_map
       integer                               :: i,j, global_node_id
 
@@ -278,7 +295,7 @@ module library
 
       do i = 1, nUne
         global_node_id = elements(elm_num,i+1)
-        do j=1 ,dim_prob
+        do j=1 ,Dp
           element_nodes(i,j) = nodes(global_node_id,j+1)
         end do
         node_id_map(i,1) = global_node_id
@@ -292,7 +309,7 @@ module library
       integer, dimension(100,5),  intent(in)::  pelements
       real, dimension(341,3), intent(in)    ::  nodes
       integer,intent(in)                    :: elm_num ! number of element for each elemental integral in do of K global
-      real, dimension(nPne,dim_prob), intent(out) :: pelement_nodes
+      real, dimension(nPne,Dp), intent(out) :: pelement_nodes
       integer, dimension(nPne,1), intent(out)     :: pnode_id_map
       integer                               :: i,j, global_node_id
 
@@ -302,7 +319,7 @@ module library
 
       do i = 1, nPne
         global_node_id = pelements(elm_num,i+1)
-        do j=1 ,dim_prob
+        do j=1 ,Dp
           pelement_nodes(i,j) = nodes(global_node_id,j+1)
         end do
         pnode_id_map(i,1) = global_node_id
@@ -313,12 +330,12 @@ module library
     function J2D( element_nodes, dN_dxi, dN_deta, Gp)
       implicit none
 
-      real, dimension(nUne,dim_prob), intent(in)            :: element_nodes
+      real, dimension(nUne,Dp), intent(in)            :: element_nodes
       double precision, dimension(nUne,size(gauss_points) ), intent(in) :: dN_dxi, dN_deta
       integer, intent(in)                                  :: Gp !esta variable se usara en el lazo principal con el numero de punto de gauss para evaluar las integrales elementales
-      double precision, dimension(dim_prob,nUne)                        :: Basis2D
+      double precision, dimension(Dp,nUne)                        :: Basis2D
       double precision, dimension(1,nUne)                               :: Nxi, Neta
-      double precision, dimension(dim_prob,dim_prob)                   :: J2D
+      double precision, dimension(Dp,Dp)                   :: J2D
 
 
       !con estas instrucciones extraigo la columna de Nx como renglon y lo guardo en Nxi, Gp se
@@ -359,8 +376,8 @@ module library
 
       implicit none
 
-      double precision, dimension(dim_prob,dim_prob), intent(in)  :: A
-      double precision, dimension(dim_prob,dim_prob)              :: inv2x2
+      double precision, dimension(Dp,Dp), intent(in)  :: A
+      double precision, dimension(Dp,Dp)              :: inv2x2
 
       double precision, parameter :: EPS = 1.0E-10
       double precision :: det
@@ -390,8 +407,8 @@ module library
 
       implicit none
 
-      double precision, dimension(dim_prob,dim_prob), intent (in)   :: A
-      double precision, dimension(2*dim_prob, 2*dim_prob)           :: buildJb
+      double precision, dimension(Dp,Dp), intent (in)   :: A
+      double precision, dimension(2*Dp, 2*Dp)           :: buildJb
 
       buildJb(1:2,1:2) = A
       buildJb(3:4,3:4) = A
@@ -440,10 +457,9 @@ module library
 
       implicit none
 
-      double precision, dimension(nUne,size(gauss_points) ) :: dN_dxi, dN_deta
-      integer, intent (in) :: Gp
+      double precision, dimension(nUne,size(gauss_points) ), intent(in) :: dN_dxi, dN_deta
+      integer, intent(in) :: Gp
 
-      ! real, dimension(4, 2*nUne)  :: B
       double precision, dimension(4, 2*nUne)  :: compBmat
       double precision, dimension(1, nUne)    :: Nxi, Neta
 
@@ -464,8 +480,8 @@ module library
       ! compBmat = B
       return
       ! - - - * * * D U D A * * * - - -
-        !En matlab basta con  Nxi(i) aqui no es posible indicar un vector solo con una dimension?
-        !Siempore se debe indicar matriz como un vector fila o vector columna?
+        !En matlab basta con  Nxi(i) aqui quneuq es posible indicar un vector solo con una dimension, no sirve para multiplicarlo.
+        !Siempre se debe indicar matriz como un vector fila o vector columna?
       ! - - - * * * D U D A * * * - - -
 
     end function compBmat
@@ -519,7 +535,7 @@ module library
 
         ! n_nodes               Ya declarado como variable global
         ! n_pnodes              Ya declarado como variable global
-        ! MAXelements            Ya declarado como variable global
+        ! Nelem            Ya declarado como variable global
         ! nUne   Ya declarado como variable global
       !- - - * * * * * * * * * - - -
 
@@ -527,12 +543,12 @@ module library
       double precision, dimension(nUne,size(gauss_points,1)), intent(in)               :: dN_dxi, dN_deta
       double precision, allocatable, dimension(:,:)       :: Np
       double precision, dimension(2*nUne, 2*nUne)        :: ke
-      double precision, dimension(dim_prob, dim_prob)     :: Jaco, Jinv
+      double precision, dimension(Dp, Dp)     :: Jaco, Jinv
       double precision                                    :: detJ
       real,  dimension(3,3)                               :: cc, C
-      double precision, dimension(2*dim_prob, 2*dim_prob) :: Jb
+      double precision, dimension(2*Dp, 2*Dp) :: Jb
       double precision, dimension(4,2*nUne)                :: B
-      double precision, dimension(3,dim_prob*dim_prob)    :: HJ
+      double precision, dimension(3,Dp*Dp)    :: HJ
       double precision, dimension(3,2*nUne)                :: HJB
       double precision, dimension(2*nUne,3)                :: HJB_T
       real, dimension(3,4)                    :: H
@@ -552,9 +568,9 @@ module library
       double precision, dimension(16,4)                   :: part8
       double precision, dimension(4*nPne,1)               :: dN
       integer, dimension(nUne,1)               :: node_id_map
-      real, dimension(nUne,dim_prob)           :: element_nodes
+      real, dimension(nUne,Dp)           :: element_nodes
       integer, dimension(nPne,1)              :: pnode_id_map
-      real, dimension(nPne,dim_prob)          :: pelement_nodes
+      real, dimension(nPne,Dp)          :: pelement_nodes
 
       integer                                 :: gp, ngp, e, i,j, row_node, row 
       integer                                 :: col_node, pnode_id, col!, mrow, ncol
@@ -568,7 +584,7 @@ module library
       H  = CompH()
       
       !elements loop for K1-1 block Global K
-      do e = 1, MAXelements
+      do e = 1, Nelem
         ke = 0
         Jb = 0
         call SetElementNodes(e, elements, nodes, element_nodes, node_id_map)
@@ -600,7 +616,7 @@ module library
       
       call Quad4Nodes(gauss_points, ngp, Np)
 
-      do e = 1, MAXelements
+      do e = 1, Nelem
         kep = 0.0
         call SetElementNodes(e, elements, nodes, element_nodes, node_id_map)
         call PreassureElemNods(e, pelements, nodes, pelement_nodes, pnode_id_map) !--Arreglar esto para que sea con p en todos los arguments
