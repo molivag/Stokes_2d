@@ -1,16 +1,20 @@
 module Isoparametric
-  ! use library, only: GetQuadGauss
-
   implicit none
 
+  ! ! ! Global variables related with Isoparametric module ! ! !
+
+  integer :: totGp
+  
+  ! ! ! End of GLobal Variables ! ! !
+  
   contains
   
-    subroutine GetQuadGauss(fila, columna, gauss_points, gauss_weights, ngp)!, xi, eta)
+    subroutine GetQuadGauss(fila, columna, gauss_points, gauss_weights, totGp)!, xi, eta)
       implicit none
 
-      integer            :: i,j,k
-      integer, intent(out) :: ngp
-      integer, intent(in) :: fila, columna
+      integer               :: i,j,k
+      integer, intent(out)  :: totGp
+      integer, intent(in)   :: fila, columna
       double precision, allocatable, dimension(:,:),intent(out) :: gauss_points, gauss_weights
       double precision, allocatable, dimension(:,:) :: w1, w2, w, x
       double precision, allocatable, dimension(:,:) :: xi, eta
@@ -20,7 +24,7 @@ module Isoparametric
       allocate(w(columna,columna))
       allocate(xi(size(gauss_points,1),1),eta(size(gauss_points,1),1))
 
-      ngp = size(gauss_points,1) ! y declarar ngp con SAVE para tener siempre el valor de la variable ngp 
+      totGp = size(gauss_points,1) ! y declarar totGp con SAVE para tener siempre el valor de la variable totGp 
       gauss_points = 0
       gauss_weights = 0
 
@@ -64,7 +68,7 @@ module Isoparametric
 
 
   
-    subroutine Quad8Nodes(gauss_points, ngp, N, dN_dxi, dN_deta)
+    subroutine Quad8Nodes(gauss_points,  N, dN_dxi, dN_deta)
       !CompNDNatPointsQuad8
       ! Shape functions for square (quadrilaters) linear elements
 			!
@@ -83,7 +87,7 @@ module Isoparametric
       integer, parameter  :: Nne = 8
       integer, parameter  :: dim_prob = 2
 
-      integer,                          intent(in) :: ngp
+      ! integer,                          intent(in) :: totGp
       double precision, dimension(:,:), intent(in) :: gauss_points
       double precision, allocatable, dimension(:,:), intent(out) :: N, dN_dxi, dN_deta
       double precision, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
@@ -92,12 +96,12 @@ module Isoparametric
       integer             :: i, j, jj, k
 
       ! !number of gauss points
-      ! ngp = size(gauss_points,1) ! esta puede quedar como variable global si se usa en alguna otra subrutina
+      ! totGp = size(gauss_points,1) ! esta puede quedar como variable global si se usa en alguna otra subrutina
       !                           ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
-      allocate( N(Nne,ngp),dN_dxi(Nne,ngp),dN_deta(Nne,ngp) )
+      allocate( N(Nne,totGp),dN_dxi(Nne,totGp),dN_deta(Nne,totGp) )
 
-      N  = 0.0
-      dN_dxi = 0.0
+      N       = 0.0
+      dN_dxi  = 0.0
       dN_deta = 0.0
 
       xi_vector  = gauss_points(:,1)     ! xi-coordinate of point j
@@ -114,7 +118,7 @@ module Isoparametric
       ! Aqui se calculan as funciones de forma N y parte de las derivadas dN/dxi and dN_deta
       ! mas no las derivadas dN/dx and dN/dy completas
 
-      do j = 1, ngp
+      do j = 1, totGp
         xi  = xi_vector(j)      ! xi-coordinate of point j
         eta = eta_vector(j)     ! eta-coordinate of point j
 
@@ -151,7 +155,7 @@ module Isoparametric
     end subroutine Quad8Nodes
 
 
-    subroutine Quad4Nodes (gauss_points, ngp, N, dN_dxi, dN_deta)
+    subroutine Quad4Nodes (gauss_points,  N, dN_dxi, dN_deta)
       !CompNDNatPointsQuad8
       ! Shape functions for square (quadrilaters) linear elements
 			!
@@ -169,10 +173,10 @@ module Isoparametric
       integer, parameter  :: Nne = 4
       integer, parameter  :: dim_prob = 2
 
-      integer,                          intent(in) :: ngp
+      ! integer,                          intent(in) :: totGp
       double precision, dimension(:,:), intent(in) :: gauss_points
       double precision, allocatable, dimension(:,:), intent(out) :: N
-      double precision, allocatable, dimension(:,:), intent(out), optional:: dN_dxi, dN_deta
+      double precision, allocatable, dimension(:,:), intent(out), optional :: dN_dxi, dN_deta
       double precision, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
       integer, dimension(Nne,dim_prob) :: master_nodes
       double precision    :: xi, eta, mn_xi, mn_eta
@@ -199,12 +203,12 @@ module Isoparametric
            
       !do loop: compute N, dN_dxi, dN_deta
       if (present(dN_dxi) .and. present(dN_deta))then
-        allocate(dN_dxi(Nne,ngp) )
-        allocate(dN_deta(Nne,ngp) )
+        allocate(dN_dxi(Nne,totGp) )
+        allocate(dN_deta(Nne,totGp) )
         dN_dxi  = 0.0
         dN_deta = 0.0
         
-        do j=1,ngp                              ! columns for point 1,2 ...
+        do j=1,totGp                              ! columns for point 1,2 ...
           xi=xi_vector(j);                      ! xi-coordinate of point j 
           eta=eta_vector(j);                    ! eta-coordinate of point j 
           do i=1,4                              ! rows for N1, N2, ...
@@ -215,9 +219,9 @@ module Isoparametric
           end do
         end do
       else
-        allocate(N(Nne,ngp) )
+        allocate(N(Nne,totGp) )
         N     = 0.0
-        do j=1,ngp                              ! columns for point 1,2 ...
+        do j=1,totGp                              ! columns for point 1,2 ...
           xi=xi_vector(j);                      ! xi-coordinate of point j 
           eta=eta_vector(j);                    ! eta-coordinate of point j 
           do i=1,4                              ! rows for N1, N2, ...
@@ -238,11 +242,11 @@ module Isoparametric
 
 
 
-    ! subroutine Quad4Nodes(gauss_points, ngp, Np)
+    ! subroutine Quad4Nodes(gauss_points, totGp, Np)
     !   !CompNDNatPointsQuad4
     !   implicit none
 
-    !   integer,                          intent(in) :: ngp
+    !   integer,                          intent(in) :: totGp
     !   double precision, dimension(:,:), intent(in) :: gauss_points
     !   double precision, allocatable, dimension(:,:), intent(out) :: Np
     !   double precision, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
@@ -256,7 +260,7 @@ module Isoparametric
     !   !number of gauss points
     !   ! esta puede quedar como variable global si se usa en alguna otra subrutina
     !                             ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
-    !   allocate( Np(Npne,ngp))
+    !   allocate( Np(Npne,totGp))
 
     !   Np  = 0.0
     !   xi_vector  = gauss_points(:,1)     ! xi-coordinate of point j
@@ -268,7 +272,7 @@ module Isoparametric
     !   !colocar todos los valores en x, luego todos los de y y luego, si hubiera, todos los de z para que al acomodarse salga el par
     !   !suponiendo un reshape de 3,2 debe acomodarse x1, x2, x3, y1, y2, y3 DUDA *Siempre debe ser es asi*
 
-    !   do j = 1, ngp
+    !   do j = 1, totGp
     !     xi  = xi_vector(j)      ! xi-coordinate of point j
     !     eta = eta_vector(j)     ! eta-coordinate of point j
     !     do i = 1, 4
