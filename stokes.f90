@@ -21,18 +21,13 @@ program Stokes
   double precision, allocatable, dimension(:,:) :: Sv
 
   
-
-  call ReadRealFile(10,"nodes.dat", 341,3, nodes)
-  call ReadIntegerFile(20,"elements.dat", 100,9, elements)
-  call ReadReal(30,"materials.dat", materials)
+  call ReadIntegerFile(20,"elements.dat", 100,9, elements)  
+  call ReadRealFile(10,"nodes.dat", 341,3, nodes) !Para dreducir el numero de subrutinas, usar la sentencia option para 
+  call ReadReal(30,"materials.dat", materials)    !Para dreducir el numero de subrutinas, usar la sentencia option para      
   call ReadIntegerFile(40,"pnodes.dat", 341,2, pnodes)
   call ReadIntegerFile(50,"pelements.dat", 100,5, pelements)
   
   call GetQuadGauss(ngp,ngp,gauss_points, gauss_weights, totGp)
-  
-  ! allocate( N(nUne,totGp))
-  ! allocate( dN_dxi(nUne,totGp))
-  ! allocate( dN_deta(nUne,totGp))
   
   call Quad8Nodes(gauss_points, N, dN_dxi, dN_deta)
 

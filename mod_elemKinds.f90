@@ -69,7 +69,8 @@ module Isoparametric
 
   
     subroutine Quad8Nodes(gauss_points,  N, dN_dxi, dN_deta)
-      !CompNDNatPointsQuad8
+      implicit None
+
       ! Shape functions for square (quadrilaters) linear elements
 			!
 			!  |
@@ -82,9 +83,8 @@ module Isoparametric
 			!  |
 			!  +--------X-------->
       
-      implicit None
 
-      integer, parameter  :: Nne = 8
+      integer, parameter  :: Nne = 8          !Esto se puede quitar poniendo un modulo con todos las variables globales incluyendo las de mod_library
       integer, parameter  :: dim_prob = 2
 
       ! integer,                          intent(in) :: totGp
@@ -100,7 +100,7 @@ module Isoparametric
       !                           ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
       allocate( N(Nne,totGp),dN_dxi(Nne,totGp),dN_deta(Nne,totGp) )
 
-      N       = 0.0
+      N = 0.0
       dN_dxi  = 0.0
       dN_deta = 0.0
 
@@ -156,6 +156,8 @@ module Isoparametric
 
 
     subroutine Quad4Nodes (gauss_points,  N, dN_dxi, dN_deta)
+      implicit None
+
       !CompNDNatPointsQuad8
       ! Shape functions for square (quadrilaters) linear elements
 			!
@@ -168,9 +170,8 @@ module Isoparametric
 			!  |
 			!  +--------X-------->
       
-      implicit None
 
-      integer, parameter  :: Nne = 4
+      integer, parameter  :: Nne = 4        !Esto se puede quitar poniendo un modulo con todos las variables globales incluyendo las de mod_library
       integer, parameter  :: dim_prob = 2
 
       ! integer,                          intent(in) :: totGp
@@ -240,77 +241,69 @@ module Isoparametric
 
 
 
-
-
-    ! subroutine Quad4Nodes(gauss_points, totGp, Np)
-    !   !CompNDNatPointsQuad4
-    !   implicit none
-
-    !   integer,                          intent(in) :: totGp
-    !   double precision, dimension(:,:), intent(in) :: gauss_points
-    !   double precision, allocatable, dimension(:,:), intent(out) :: Np
-    !   double precision, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
-    !   integer, parameter :: Npne = 4
-    !   integer, parameter :: dim_prob = 2
-    !   integer, dimension(Npne,dim_prob) :: master_nodes
-    !   double precision    :: xi, eta, mn_xi, mn_eta
-    !   integer :: i, j
-
-
-    !   !number of gauss points
-    !   ! esta puede quedar como variable global si se usa en alguna otra subrutina
-    !                             ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
-    !   allocate( Np(Npne,totGp))
-
-    !   Np  = 0.0
-    !   xi_vector  = gauss_points(:,1)     ! xi-coordinate of point j
-    !   eta_vector = gauss_points(:,2)
-
-    !   !coordinates of the nodes of the master element
-    !   master_nodes = reshape([1, -1, -1, 1, 1, 1, -1, -1], [Npne,dim_prob])
-    !   !NOTA ** Para que el reshape funcione correctamente, o que produzca el par de valores deseado, primero se deben
-    !   !colocar todos los valores en x, luego todos los de y y luego, si hubiera, todos los de z para que al acomodarse salga el par
-    !   !suponiendo un reshape de 3,2 debe acomodarse x1, x2, x3, y1, y2, y3 DUDA *Siempre debe ser es asi*
-
-    !   do j = 1, totGp
-    !     xi  = xi_vector(j)      ! xi-coordinate of point j
-    !     eta = eta_vector(j)     ! eta-coordinate of point j
-    !     do i = 1, 4
-    !       mn_xi = master_nodes(i,1)
-    !       mn_eta= master_nodes(i,2)
-    !       Np(i,j)=(1.0 + mn_xi*xi)*(1.0 + mn_eta*eta)/4.0 
-    !     end do
-    !   end do
-
-    ! end subroutine Quad4Nodes
-
-
-
-
   	! != = = = = = = = = = = = = = = = = = = = = = =
-    ! subroutine LineTriangElem( )
-		! 	!  
-		! 	!  |
-		! 	!  |        o
-		! 	!  |       / \
-		! 	!  |      /   \
-		! 	!  Y     /     \
-		! 	!  |    /       \
-		! 	!  |   /         \
-		! 	!  |  o-----------o
-		! 	!  |
-		! 	!  +--------X-------->
-    !   implicit none
+    subroutine Triang3pElem( gauss_points, N, dN_dxi, dN_deta)
+      implicit none
+
+			!  
+			!  |
+			!  |        o
+			!  |       / \
+			!  |      /   \
+			!  Y     /     \
+			!  |    /       \
+			!  |   /         \
+			!  |  o-----------o
+			!  |
+			!  +--------X-------->
+
+
+
+      integer, parameter  :: Nne = 4
+      integer, parameter  :: dim_prob = 2   !Esto se puede quitar poniendo un modulo con todos las variables globales incluyendo las de mod_library
+
+      double precision, dimension(:,:), intent(in) :: gauss_points
+      double precision, allocatable, dimension(:,:), intent(out) :: N
+      double precision, allocatable, dimension(:,:), intent(out), optional :: dN_dxi, dN_deta
+      double precision, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
+      double precision    :: xi, eta
+      integer             :: j
+
+
+      allocate(dN_dxi(Nne,totGp) )
+      allocate(dN_deta(Nne,totGp) )
+      N = 0.0
+      dN_dxi  = 0.0
+      dN_deta = 0.0
+
+      xi_vector  = gauss_points(:,1)     ! xi-coordinate of point j
+      eta_vector = gauss_points(:,2)
+
+      do j=1,totGp
+        xi=xi_vector(j);                      ! xi-coordinate of point j 
+        eta=eta_vector(j); 
+
+        N(1,j)      =  2*(1-xi-eta)*(1-xi-eta-0.5)
+        dN_dxi(1,j) = -2*(1-xi-eta-0.5)-2*(1-xi-eta) 
+        dN_deta(1,j)= -2*(1-xi-eta-0.5)-2*(1-xi-eta) 
+
+        N(2,j)      = 2*xi*(xi-0.5)
+        dN_dxi(2,j) = 2*(xi-0.5) + 2*xi 
+        dN_deta(2,j)= 0
+
+        N(3,j)      =  2*eta*(eta-0.5)
+        dN_dxi(3,j) = 0
+        dN_deta(3,j)= 2*(eta-0.5) + 2*eta 
+
+      end do
       
       
-    
-    
 
-    ! end subroutine LineTriangElem
+    end subroutine Triang3pElem
 
 
 
-  	!= = = = = = = = = = = = = = = = = = = = = = =
+  	
 
 
 
