@@ -614,7 +614,7 @@ module library
       allocate (K12(n_nodes*2,n_pnodes),K12_T(n_pnodes,n_nodes*2))
       K12 = 0
       
-      call Quad4Nodes(gauss_points, ngp, Np)
+      call Quad4Nodes(gauss_points, Np)
 
       do e = 1, Nelem
         kep = 0.0
