@@ -74,7 +74,6 @@ module library
       close (UnitNum)
 
     end subroutine
-
     
     subroutine ReadMixFile(UnitNum, FileName, NumRows, NumCols, Real_Array)
       implicit none
@@ -100,7 +99,6 @@ module library
       close (UnitNum)
 
     end subroutine
-
 
     subroutine GetQuadGauss(fila, columna, gauss_points, gauss_weights)
       implicit none
@@ -147,7 +145,7 @@ module library
 
       ! Aqui puedo poner un ngp = size(gauss_points,1) ! y declarar ngp con SAVE para tener siempre el valor de la variable ngp 
 
-      DEALLOCATE(w1, w2, x, w)
+      ! DEALLOCATE(w1, w2, x, w)
       !Esta funcion no afecta al resultado pues se ha liberado la memoria para calcular pesos y puntos
       !de Gauss mas no las variables que contienen pesos y puntos de gauus.
     end subroutine GetQuadGauss
@@ -165,7 +163,7 @@ module library
       !number of gauss points
       ngp = size(gauss_points,1) ! esta puede quedar como variable global si se usa en alguna otra subrutina
                                 ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
-      allocate( N(Nne,ngp),Nx(Nne,ngp),Ny(Nne,ngp) )
+      allocate( N(Nne,ngp), Nx(Nne,ngp), Ny(Nne,ngp) )
 
       N  = 0.0
       Nx = 0.0
@@ -690,8 +688,6 @@ module library
       
     end subroutine GlobalK
 
-
-
     subroutine SetBounCond( NoBV, NoBVcol )
       !========================================================================
       !Esta subroutina revisa todos los nodos de la malla y define el tipo de
@@ -705,45 +701,51 @@ module library
       !=========================================================================
       implicit none
 
-      real, dimension(341,3)    :: nodes
-      integer, parameter        :: n_nodes = size(nodes,1)
-      integer :: ierror, a ,b, c, d, e, i
+      ! real, dimension(341,3)    :: nodes
+      ! integer, parameter        :: n_nodes = size(nodes,1)
+      
       integer, intent(out) :: NoBV, NoBVcol
-      real :: x, y
+      integer :: ierror, a ,b, c, i
+      real    :: x, y
 
-      call ReadRealFile(10,"nodes.dat", 341,3, nodes)
-      !inicializamos los contadores
+      ! call ReadRealFile(10,"nodes.dat", 341,3, nodes)
+      ! inicializamos los contadores
+      ! Los contadores son para que cada vez
+      ! que un if se cumpla, se sume el numero
+      ! equivalente a los renglones escritos en
+      ! el archivo de texto que se esta creando
+      ! y asi se tenga el numero total de nodos en
+      ! las fronteras
       a = 0
       b = 0
-      c = 0
-      d = 0
-      e = 0 
+      c = 0 
       
       open(unit=100, file='Fbcsvp.dat',Status= 'replace', action= 'write',iostat=ierror)
       NoBVcol = size(nodes,2)     
      
-      do i =1,n_nodes
+      do i =1, n_nodes
         x=nodes(i,2)
         y=nodes(i,3)
-        if(y .eq. 1.0) then
-            write(100,50) real(i), 1.0, 1.0
-            write(100,50) real(i), 2.0, 0.0
-            a=a+1
-            b=b+1
-        else if(x .eq. 0.0)then
+        if(y.eq.1.0) then
+         write(100,50) real(i), 1.0, 1.0
+         write(100,50) real(i), 2.0, 0.0
+         a=a+2
+         if(x.eq.0.5)then
             write(100,50) real(i),3.0,0.0
-            c=c+1
-        else if (x .eq.0.0 .or. y.eq.0.0 .or. x.eq.1.0)then
-            write(100,50) real(i), 1.0, 0.0
-            write(100,50) real(i), 2.0, 0.0
-            d=d+1
-            e=e+1
-        end if
-        NoBV = a+b+c+d+e
-      end do
+            b=b+1
+         end if
 
+        else if (x.eq.0.0 .or. y.eq.0.0 .or. x.eq.1.0)then
+         write(100,50) real(i), 1.0, 0.0
+         write(100,50) real(i), 2.0, 0.0
+         c=c+2
+
+        end if
+        NoBV = a+b+c
+      end do
+    
       close(100)
-      ! 50 format(2I3,' ', F13.10)
+    
       50 format(3F15.10)
 
    
@@ -753,8 +755,8 @@ module library
       ! - - - - - - - - - - * * * * * * * * * * - - - - - - - 
       ! Set velocity (u) and preasure (p) boundary condition by penalty method
       ! - - - - - - - - - - * * * * * * * * * * - - - - - - - - - -
-
       implicit none
+      
       real, dimension(NoBV,3), intent(in) :: Fbcsvp
       double precision :: param, coeff
       double precision, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(in out) :: A_K  !Global Stiffnes matrix
