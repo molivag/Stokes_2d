@@ -64,7 +64,7 @@ module Isoparametric
 
 
   
-    subroutine Quad8Nodes (gauss_points, N, Nx, Ny)
+    subroutine Quad8Nodes (gauss_points, ngp, N, dN_dxi, dN_deta)
       !CompNDNatPointsQuad8
       ! Shape functions for square (quadrilaters) linear elements
 			!
@@ -79,23 +79,26 @@ module Isoparametric
 			!  +--------X-------->
       
       implicit None
-      integer, parameter :: Nne = 8
-      integer, parameter :: dim_prob = 2
+
+      integer, parameter  :: Nne = 8
+      integer, parameter  :: dim_prob = 2
+
+      integer,                          intent(in) :: ngp
       double precision, dimension(:,:), intent(in) :: gauss_points
-      double precision, allocatable, dimension(:,:), intent(out) :: N, Nx, Ny
+      double precision, allocatable, dimension(:,:), intent(out) :: N, dN_dxi, dN_deta
       double precision, dimension(size(gauss_points,1)) :: xi_vector, eta_vector
       integer, dimension(Nne,dim_prob) :: master_nodes
       double precision    :: xi, eta, mn_xi, mn_eta
-      integer :: ngp, i, j, jj, k
+      integer             :: i, j, jj, k
 
-      !number of gauss points
-      ngp = size(gauss_points,1) ! esta puede quedar como variable global si se usa en alguna otra subrutina
-                                ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
-      allocate( N(Nne,ngp),Nx(Nne,ngp),Ny(Nne,ngp) )
+      ! !number of gauss points
+      ! ngp = size(gauss_points,1) ! esta puede quedar como variable global si se usa en alguna otra subrutina
+      !                           ! si solo se usa aqui, entonces variable como local-----> Si se usa en otra rutina, en compK
+      allocate( N(Nne,ngp),dN_dxi(Nne,ngp),dN_deta(Nne,ngp) )
 
       N  = 0.0
-      Nx = 0.0
-      Ny = 0.0
+      dN_dxi = 0.0
+      dN_deta = 0.0
 
       xi_vector  = gauss_points(:,1)     ! xi-coordinate of point j
       eta_vector = gauss_points(:,2)
@@ -106,6 +109,11 @@ module Isoparametric
       !colocar todos los valores en x, luego todos los de y y luego, si hubiera todos los de z para que al acomodarse salga el par
       !suponiendo un reshape de 3,2 debe acomodarse x1, x2, x3, y1, y2, y3 DUDA *Siempre es asi*
 
+      ! dN(xi,eta)/dx = dN/dxi(dxi\dx) + dN/deta(deta/dx)
+      ! dN(xi,eta)/dy = dN/dxi(dxi\dy) + dN/deta(deta/dy)
+      ! Aqui se calculan as funciones de forma N y parte de las derivadas dN/dxi and dN_deta
+      ! mas no las derivadas dN/dx and dN/dy completas
+
       do j = 1, ngp
         xi  = xi_vector(j)      ! xi-coordinate of point j
         eta = eta_vector(j)     ! eta-coordinate of point j
@@ -114,14 +122,14 @@ module Isoparametric
         N(6,j)=1.0/2*(1-xi)*(1-eta**2)
         N(7,j)=1.0/2*(1-xi**2)*(1-eta)
         N(8,j)=1.0/2*(1+xi)*(1-eta**2)
-        Nx(5,j)=-xi*(1+eta)
-        Nx(6,j)=-1.0/2*(1-eta**2)
-        Nx(7,j)=-xi*(1-eta)
-        Nx(8,j)=1.0/2*(1-eta**2)
-        Ny(5,j)=1.0/2*(1-xi**2)
-        Ny(6,j)=(1-xi)*(-eta)
-        Ny(7,j)=-1.0/2*(1-xi**2)
-        Ny(8,j)=(1+xi)*(-eta)
+        dN_dxi(5,j)=-xi*(1+eta)
+        dN_dxi(6,j)=-1.0/2*(1-eta**2)
+        dN_dxi(7,j)=-xi*(1-eta)
+        dN_dxi(8,j)=1.0/2*(1-eta**2)
+        dN_deta(5,j)=1.0/2*(1-xi**2)
+        dN_deta(6,j)=(1-xi)*(-eta)
+        dN_deta(7,j)=-1.0/2*(1-xi**2)
+        dN_deta(8,j)=(1+xi)*(-eta)
 
         do i = 1, 4
           mn_xi = master_nodes(i,1)
@@ -133,8 +141,8 @@ module Isoparametric
           end if
           k=i+4
           N(i,j)=(1.0 + mn_xi*xi)*(1.0 + mn_eta*eta)/4.0 - 1.0/2*(N(jj,j)+N(k,j))
-          Nx(i,j)= mn_xi*(1.0 + mn_eta*eta)/4.0 - 1.0/2*(Nx(jj,j)+Nx(k,j))
-          Ny(i,j)= mn_eta*(1.0 + mn_xi*xi)/4.0 - 1.0/2*(Ny(jj,j)+Ny(k,j))
+          dN_dxi(i,j)= mn_xi*(1.0 + mn_eta*eta)/4.0 - 1.0/2*(dN_dxi(jj,j)+dN_dxi(k,j))
+          dN_deta(i,j)= mn_eta*(1.0 + mn_xi*xi)/4.0 - 1.0/2*(dN_deta(jj,j)+dN_deta(k,j))
 
         end do
 
