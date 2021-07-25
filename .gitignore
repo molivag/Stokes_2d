@@ -14,7 +14,6 @@ Ds_Store/
 Matlab_fig/
 *.exe
 src/
-=======
 Matlab_fig/
 *.fig
->>>>>>> double
+mod_parameters.f90
