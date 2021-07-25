@@ -1,10 +1,11 @@
 module library
+  use Isoparametric
   Implicit None
 
   ! ! ! Aqui se declaran las variables globales ! ! !
 
   real                      :: materials
-  real, dimension(341,3)    :: nodes
+  real,    dimension(341,3) :: nodes
   integer, dimension(100,9) :: elements
   integer, dimension(341,2) :: pnodes
   integer, dimension(100,5) :: pelements
@@ -74,7 +75,11 @@ module library
       close (UnitNum)
 
     end subroutine
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> Se cambiaron nombres de Nx por dN_dxi y Ny por dN_deta en todo los files .f90
     subroutine ReadMixFile(UnitNum, FileName, NumRows, NumCols, Real_Array)
       implicit none
 
@@ -99,6 +104,7 @@ module library
       close (UnitNum)
 
     end subroutine
+<<<<<<< HEAD
 
     subroutine GetQuadGauss(fila, columna, gauss_points, gauss_weights)
       implicit none
@@ -252,6 +258,9 @@ module library
 
     end subroutine CompNDNatPointsQuad4
                               
+=======
+                             
+>>>>>>> Se cambiaron nombres de Nx por dN_dxi y Ny por dN_deta en todo los files .f90
     subroutine SetElementNodes(elm_num, elements, nodes, element_nodes, node_id_map)
       implicit none
 
@@ -300,11 +309,11 @@ module library
 
     end subroutine PreassureElemNods
 
-    function J2D( element_nodes, Nx, Ny, Gp)
+    function J2D( element_nodes, dN_dxi, dN_deta, Gp)
       implicit none
 
       real, dimension(Nne,dim_prob), intent(in)            :: element_nodes
-      double precision, dimension(Nne,size(gauss_points) ), intent(in) :: Nx, Ny
+      double precision, dimension(Nne,size(gauss_points) ), intent(in) :: dN_dxi, dN_deta
       integer, intent(in)                                  :: Gp !esta variable se usara en el lazo principal con el numero de punto de gauss para evaluar las integrales elementales
       double precision, dimension(dim_prob,Nne)                        :: Basis2D
       double precision, dimension(1,Nne)                               :: Nxi, Neta
@@ -312,16 +321,24 @@ module library
 
 
       !con estas instrucciones extraigo la columna de Nx como renglon y lo guardo en Nxi, Gp se
-      !ira moviendo conforme la funcion J2D sea llamada en el lazo principal para cada elemento lo mismo para Neta con Ny
-      Nxi  = spread(Nx(:,Gp),dim = 1, ncopies= 1)
-      Neta = spread(Ny(:,Gp),dim = 1, ncopies= 1)
+      !ira moviendo conforme la funcion J2D sea llamada en el lazo principal para cada elemento lo mismo para Neta con dN_deta
+      Nxi  = spread(dN_dxi(:,Gp),dim = 1, ncopies= 1)
+      Neta = spread(dN_deta(:,Gp),dim = 1, ncopies= 1)
 
+      !Las siguientes tres lineas realizan de forma implicita el calculo de las derivadas
+      !espaciales es decir dN/dx and dN/dy (eq. 5.114 - 5.117). Las derivadas espaciales 
+      !no se calcula explicitamente, en su lugar se usa:
+        
+      !            d/dy = (d/deta)J^-1      (ver eq. 5.77 y 5.109)
+
+      ! Esta forma de 
       Basis2D(1,:) = Nxi(1,:)
       Basis2D(2,:) = Neta(1,:)
-
-      J2D = matmul(Basis2D,element_nodes)
-
-      ! J = J2D
+      J2D = matmul(Basis2D,element_nodes) !Aqui se usan directamente las derivadas (eqs 5.114-5.117) de las coordenadas fisicas
+                                          !respecto de las coordenadas del master element (isoparametric domain) para llenar la matriz Jacobiano.
+      ! De la subroutina Quad4Nodes or Quad8Nodes  ya se tienen las derivadas de las funciones de forma respecto a las coordenadas del master element
+      ! es decir dN/dxi and dN/deta contenidas en Basis 2D. Luego, se multiplican por element_nodes para completar el Jacobiano.
+      
 
       ! - - - * * * D U D A * * * - - -
         !Si el nombre de la funcion es el mismo que la variable donde se guarda, entonces no puedo declararla como
@@ -333,8 +350,6 @@ module library
 
         !Me marca un warning
       ! - - - * * * D U D A * * * - - -
-
-
 
       return
     end function J2D
@@ -420,11 +435,11 @@ module library
 
     end function CompH
 
-    function compBmat(Nx, Ny, Gp)
+    function compBmat(dN_dxi, dN_deta, Gp)
 
       implicit none
 
-      double precision, dimension(Nne,size(gauss_points) ) :: Nx, Ny
+      double precision, dimension(Nne,size(gauss_points) ) :: dN_dxi, dN_deta
       integer, intent (in) :: Gp
 
       ! real, dimension(4, 2*Nne)  :: B
@@ -434,8 +449,8 @@ module library
       integer::  i
 
       ! B = 0
-      Nxi  = spread(Nx(:,Gp),dim = 1, ncopies= 1)
-      Neta = spread(Ny(:,Gp),dim = 1, ncopies= 1)
+      Nxi  = spread(dN_dxi(:,Gp),dim = 1, ncopies= 1)
+      Neta = spread(dN_deta(:,Gp),dim = 1, ncopies= 1)
 
 
       do i=1, Nne
@@ -483,7 +498,7 @@ module library
 
     end subroutine AssembleK
 
-    subroutine GlobalK( A_K, Nx, Ny) !Al tener un solo parametro de salida puedo declararla como funcion
+    subroutine GlobalK( A_K, dN_dxi, dN_deta) !Al tener un solo parametro de salida puedo declararla como funcion
 
       implicit none
 
@@ -508,7 +523,7 @@ module library
       !- - - * * * * * * * * * - - -
 
       double precision, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(out) :: A_K  !Global Stiffnes matrix
-      double precision, dimension(Nne,size(gauss_points,1)), intent(in)               :: Nx, Ny
+      double precision, dimension(Nne,size(gauss_points,1)), intent(in)               :: dN_dxi, dN_deta
       double precision, allocatable, dimension(:,:)       :: Np
       double precision, dimension(2*Nne, 2*Nne)        :: ke
       double precision, dimension(dim_prob, dim_prob)     :: Jaco, Jinv
@@ -558,11 +573,11 @@ module library
         call SetElementNodes(e, elements, nodes, element_nodes, node_id_map)
         !do-loop: compute element stiffness matrix ke
         do gp  = 1, ngp
-          Jaco = J2D(element_nodes, Nx, Ny, gp)
+          Jaco = J2D(element_nodes, dN_dxi, dN_deta, gp)
           detJ = m22det(Jaco)
           Jinv = inv2x2(Jaco)
           Jb   = buildJb (Jinv)
-          B    = compBmat( Nx, Ny, gp)
+          B    = compBmat( dN_dxi, dN_deta, gp)
           HJ   = matmul(H,Jb)
           HJB  = matmul(HJ,B)
          HJB_T = transpose(HJB)
@@ -570,7 +585,7 @@ module library
          part2 = matmul(part1,HJB)
          part3 = part2 * detJ
          !aqui marcaba error por que gauss_weights es un vector columna y debe indicarse con dos indices
-         ke = ke + part3 * gauss_weights(gp,1)
+         ke = ke + part3 * gauss_weights(gp,1)  !
         end do
 
         call AssembleK(A_K, ke, node_id_map, 2) ! assemble global K
@@ -582,7 +597,7 @@ module library
       allocate (K12(n_nodes*2,n_pnodes),K12_T(n_pnodes,n_nodes*2))
       K12 = 0
       
-      call CompNDNatPointsQuad4(gauss_points, Np)
+      call Quad4Nodes(gauss_points, Np)
 
       do e = 1, n_elements
         kep = 0.0
@@ -590,12 +605,12 @@ module library
         call PreassureElemNods(e, pelements, nodes, pelement_nodes, pnode_id_map) !--Arreglar esto para que sea con p en todos los arguments
         ! for-loop: compute element stiffness matrix ke     
         do gp  = 1, ngp
-          Jaco = J2D(element_nodes, Nx, Ny, gp)
+          Jaco = J2D(element_nodes, dN_dxi, dN_deta, gp)
           detJ = m22det(Jaco)
           Jinv = inv2x2(Jaco)
           dN = 0.0
           do j = 1, Nne
-            part4(j,:) = [ Nx(j,gp), Ny(j,gp) ]  
+            part4(j,:) = [ dN_dxi(j,gp), dN_deta(j,gp) ]  
             part5 = reshape([part4(j,:)],[2,1])           !--Revisar por que en la linea 514 y 515 si se puede hacer
             A =  matmul(Jinv,part5)           !Tuve que separar todas las multiplicaciones para que funcione 
                                               ! pues el resultado de matmul debe guardarse en otra variable, A sino marca error
