@@ -4,7 +4,7 @@ module library
 
   ! ! ! Aqui se declaran las variables globales ! ! !
 
-  integer, parameter :: Dp        = 2     !Dimension del problema 
+  integer, parameter :: DimPr     = 2     !Dimension del problema 
   integer, parameter :: Nelem     = 100   !Number of elements
   integer, parameter :: n_nodes   = 341   !Total number of velocity nodes
   integer, parameter :: n_pnodes  = 121   !Total number of preasure nodes MAXVAL(pnodes,2)
@@ -14,7 +14,7 @@ module library
 
   integer, dimension(Nelem, nUne + 1) :: elements
   integer, dimension(Nelem, nPne + 1) :: pelements  
-  real,    dimension(n_nodes, Dp + 1) :: nodes
+  real,    dimension(n_nodes, DimPr + 1) :: nodes
   integer, dimension(n_nodes, 2)      :: pnodes
   real                                :: materials
 
@@ -32,7 +32,7 @@ module library
   ! integer, parameter        :: n_pnodes = 121 !Duda, como lo tomo desde el txt es decir   n_pnodes = maxval(pnodes(:,2))
   ! integer, parameter        :: nUne = size(elements,2)-1    !Number of velocity nodes in the element
   ! integer, parameter        :: nPne = size(pelements,2)-1   !Number of preasure nodes in the eleement
-  ! integer, parameter        :: Dp = size(nodes,2)-1   !Dimension del problema
+  ! integer, parameter        :: DimPr = size(nodes,2)-1   !Dimension del problema
 
   double precision, allocatable, dimension(:,:) :: gauss_points, gauss_weights !Verificar si debe ser global---> Si, se usa en la funcion ComputeK
 
@@ -93,6 +93,7 @@ module library
       close (UnitNum)
 
     end subroutine
+
     subroutine ReadMixFile(UnitNum, FileName, NumRows, NumCols, Real_Array)
       implicit none
 
@@ -124,7 +125,7 @@ module library
       integer, dimension(100,9),  intent(in)::  elements
       real, dimension(341,3), intent(in)    ::  nodes
       integer,intent(in)                    :: elm_num ! number of element for each elemental integral in do of K global
-      real, dimension(nUne,Dp), intent(out) :: element_nodes
+      real, dimension(nUne,DimPr), intent(out) :: element_nodes
       integer, dimension(nUne,1), intent(out)     :: node_id_map
       integer                               :: i,j, global_node_id
 
@@ -134,7 +135,7 @@ module library
 
       do i = 1, nUne
         global_node_id = elements(elm_num,i+1)
-        do j=1 ,Dp
+        do j=1 ,DimPr
           element_nodes(i,j) = nodes(global_node_id,j+1)
         end do
         node_id_map(i,1) = global_node_id
@@ -148,7 +149,7 @@ module library
       integer, dimension(100,5),  intent(in)::  pelements
       real, dimension(341,3), intent(in)    ::  nodes
       integer,intent(in)                    :: elm_num ! number of element for each elemental integral in do of K global
-      real, dimension(nPne,Dp), intent(out) :: pelement_nodes
+      real, dimension(nPne,DimPr), intent(out) :: pelement_nodes
       integer, dimension(nPne,1), intent(out)     :: pnode_id_map
       integer                               :: i,j, global_node_id
 
@@ -158,7 +159,7 @@ module library
 
       do i = 1, nPne
         global_node_id = pelements(elm_num,i+1)
-        do j=1 ,Dp
+        do j=1 ,DimPr
           pelement_nodes(i,j) = nodes(global_node_id,j+1)
         end do
         pnode_id_map(i,1) = global_node_id
@@ -169,12 +170,12 @@ module library
     function J2D( element_nodes, dN_dxi, dN_deta, Gp)
       implicit none
 
-      real, dimension(nUne,Dp), intent(in)            :: element_nodes
+      real, dimension(nUne,DimPr), intent(in)            :: element_nodes
       double precision, dimension(nUne,size(gauss_points) ), intent(in) :: dN_dxi, dN_deta
       integer, intent(in)                                  :: Gp !esta variable se usara en el lazo principal con el numero de punto de gauss para evaluar las integrales elementales
-      double precision, dimension(Dp,nUne)                        :: Basis2D
+      double precision, dimension(DimPr,nUne)                        :: Basis2D
       double precision, dimension(1,nUne)                               :: Nxi, Neta
-      double precision, dimension(Dp,Dp)                   :: J2D
+      double precision, dimension(DimPr,DimPr)                   :: J2D
 
 
       !con estas instrucciones extraigo la columna de Nx como renglon y lo guardo en Nxi, Gp se
@@ -215,8 +216,8 @@ module library
 
       implicit none
 
-      double precision, dimension(Dp,Dp), intent(in)  :: A
-      double precision, dimension(Dp,Dp)              :: inv2x2
+      double precision, dimension(DimPr,DimPr), intent(in)  :: A
+      double precision, dimension(DimPr,DimPr)              :: inv2x2
 
       double precision, parameter :: EPS = 1.0E-10
       double precision :: det
@@ -246,8 +247,8 @@ module library
 
       implicit none
 
-      double precision, dimension(Dp,Dp), intent (in)   :: A
-      double precision, dimension(2*Dp, 2*Dp)           :: buildJb
+      double precision, dimension(DimPr,DimPr), intent (in)   :: A
+      double precision, dimension(2*DimPr, 2*DimPr)           :: buildJb
 
       buildJb(1:2,1:2) = A
       buildJb(3:4,3:4) = A
@@ -299,7 +300,7 @@ module library
       double precision, dimension(nUne,size(gauss_points) ), intent(in) :: dN_dxi, dN_deta
       integer, intent(in) :: Gp
 
-      double precision, dimension(4, 2*nUne)  :: compBmat
+      double precision, dimension(4, DimPr*nUne)  :: compBmat
       double precision, dimension(1, nUne)    :: Nxi, Neta
 
       integer::  i
@@ -329,9 +330,9 @@ module library
 
       implicit none
       real(8), dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(in out)  :: K !Global Stiffnes matrix
-      real(8), dimension(2*nUne, 2*nUne), intent(in)    :: ke
+      real(8), dimension(2*nUne, 2*nUne), intent(in)   :: ke
       integer, dimension(nUne,1), intent(in)           :: node_id_map
-      integer, intent(in)                             :: ndDOF 
+      integer, intent(in)                              :: ndDOF 
       integer :: i, j, row_node, row, col_node, col !nodal Degrees of Freedom
 
       !K debe llevar inout por que entra como variable (IN) pero en esta funcion se modifica (out)
@@ -380,21 +381,21 @@ module library
 
       double precision, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(out) :: A_K  !Global Stiffnes matrix
       double precision, dimension(nUne,size(gauss_points,1)), intent(in)               :: dN_dxi, dN_deta
-      double precision, allocatable, dimension(:,:)       :: Np
-      double precision, dimension(2*nUne, 2*nUne)        :: ke
-      double precision, dimension(Dp, Dp)     :: Jaco, Jinv
-      double precision                                    :: detJ
-      real,  dimension(3,3)                               :: cc, C
-      double precision, dimension(2*Dp, 2*Dp) :: Jb
-      double precision, dimension(4,2*nUne)                :: B
-      double precision, dimension(3,Dp*Dp)    :: HJ
-      double precision, dimension(3,2*nUne)                :: HJB
-      double precision, dimension(2*nUne,3)                :: HJB_T
-      real, dimension(3,4)                    :: H
-      double precision, dimension(16,3)                   :: part1
-      double precision, dimension(16,16)                  :: part2
-      double precision, dimension(16,16)                  :: part3
-      real(8), allocatable, dimension(:,:)    :: K12, K12_T!Lo puse allocatable por que marca error en la memoria 
+      double precision, allocatable, dimension(:,:)     :: Np
+      double precision, dimension(2*nUne, 2*nUne)       :: ke
+      double precision, dimension(DimPr, DimPr)         :: Jaco, Jinv
+      double precision                                  :: detJ
+      double precision, dimension(2*DimPr, 2*DimPr)     :: Jb
+      double precision, dimension(2*DimPr, DimPr*nUne)  :: B
+      double precision, dimension(3,DimPr*DimPr)        :: HJ
+      double precision, dimension(3,2*nUne)             :: HJB
+      double precision, dimension(2*nUne,3)             :: HJB_T
+      double precision, dimension(2*nUne,3)             :: part1
+      double precision, dimension(2*nUne,2*nUne)        :: part2
+      double precision, dimension(2*nUne,2*nUne)        :: part3
+      real, dimension(3,4)                              :: H
+      real, dimension(3,3)                              :: cc, C   !Derived from elasticity formulation as Matertial matrix of Hook's Law
+      real(8), allocatable, dimension(:,:)              :: K12, K12_T!Lo puse allocatable por que marca error en la memoria 
       ! Array 'k12' at (1) is larger than limit set by '-fmax-stack-var-size=', moved from stack to static storage. This makes the procedure unsafe when called recursively, 
       !or concurrently from multiple threads. Consider using '-frecursive', or increase the '-fmax-stack-var-size=' limit, or change the code to use an ALLOCATABLE array. [-Wsurprising]
       
@@ -407,9 +408,9 @@ module library
       double precision, dimension(16,4)                   :: part8
       double precision, dimension(4*nPne,1)               :: dN
       integer, dimension(nUne,1)               :: node_id_map
-      real, dimension(nUne,Dp)           :: element_nodes
+      real, dimension(nUne,DimPr)           :: element_nodes
       integer, dimension(nPne,1)              :: pnode_id_map
-      real, dimension(nPne,Dp)          :: pelement_nodes
+      real, dimension(nPne,DimPr)          :: pelement_nodes
 
       integer                                 :: gp, ngp, e, i,j, row_node, row 
       integer                                 :: col_node, pnode_id, col!, mrow, ncol
