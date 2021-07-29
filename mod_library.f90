@@ -11,7 +11,7 @@ module library
   integer, parameter :: nUne      = 8     !Number of velocity nodes in the element
   integer, parameter :: nPne      = 4     !Number of preasure nodes in the element
   integer, parameter :: Dof       = 3     !Degrees of fredoom: 2 for velocity + 1 one for preasure
-  integer, parameter :: ngp       = 3     !Number of Gauss points for quadrature  
+  integer, parameter :: ngp       = 2     !Number of Gauss points for quadrature  
 
   integer, dimension(Nelem, nUne + 1) :: elements
   integer, dimension(Nelem, nPne + 1) :: pelements  
@@ -402,7 +402,7 @@ module library
       double precision, dimension(2*nUne,nPne)          :: part8
       double precision, dimension(2*nUne,nPne)          :: kep
       double precision, dimension(DimPr,1)              :: A
-      double precision, dimension(4*nPne,1)             :: dN
+      double precision, dimension(2*nUne,1)             :: dn
       real, dimension(Dof,2*DimPr)                      :: H
       real, dimension(Dof,Dof)                          :: cc, C   !Derived from elasticity formulation as Matertial matrix of Hook's Law
       real, allocatable, dimension(:,:)                 :: K12, K12_T!Lo puse allocatable por que marca error en la memoria 
