@@ -10,6 +10,7 @@ module library
   integer, parameter :: n_pnodes  = 121   !Total number of preasure nodes MAXVAL(pnodes,2)
   integer, parameter :: nUne      = 8     !Number of velocity nodes in the element
   integer, parameter :: nPne      = 4     !Number of preasure nodes in the element
+  integer, parameter :: Dof       = 3     !Degrees of fredoom: 2 for velocity + 1 one for preasure
   integer, parameter :: ngp       = 3     !Number of Gauss points for quadrature  
 
   integer, dimension(Nelem, nUne + 1) :: elements
@@ -119,15 +120,16 @@ module library
 
     end subroutine
                              
-    subroutine SetElementNodes(elm_num, elements, nodes, element_nodes, node_id_map)
+    subroutine SetElementNodes(elm_num, element_nodes, node_id_map)
+      ! subroutine SetElementNodes(elm_num, elements, nodes, element_nodes, node_id_map)
       implicit none
 
-      integer, dimension(100,9),  intent(in)::  elements
-      real, dimension(341,3), intent(in)    ::  nodes
-      integer,intent(in)                    :: elm_num ! number of element for each elemental integral in do of K global
+      ! integer, dimension(100,9),  intent(in)::  elements
+      ! real, dimension(341,3), intent(in)    ::  nodes
+      integer,intent(in)                       :: elm_num ! number of element for each elemental integral in do of K global
       real, dimension(nUne,DimPr), intent(out) :: element_nodes
-      integer, dimension(nUne,1), intent(out)     :: node_id_map
-      integer                               :: i,j, global_node_id
+      integer, dimension(nUne,1), intent(out)  :: node_id_map
+      integer                                  :: i,j, global_node_id
 
 
       element_nodes = 0.0
@@ -143,15 +145,16 @@ module library
 
     end subroutine SetElementNodes
 
-    subroutine PreassureElemNods(elm_num, pelements, nodes, pelement_nodes, pnode_id_map)
+    subroutine PreassureElemNods(elm_num, pelement_nodes, pnode_id_map)
+      ! subroutine PreassureElemNods(elm_num, pelements, nodes, pelement_nodes, pnode_id_map)
       implicit none
 
-      integer, dimension(100,5),  intent(in)::  pelements
-      real, dimension(341,3), intent(in)    ::  nodes
-      integer,intent(in)                    :: elm_num ! number of element for each elemental integral in do of K global
+      ! integer, dimension(100,5),  intent(in)   ::  pelements
+      ! real, dimension(341,3), intent(in)       ::  nodes
+      integer,intent(in)                       :: elm_num ! number of element for each elemental integral in do of K global
       real, dimension(nPne,DimPr), intent(out) :: pelement_nodes
-      integer, dimension(nPne,1), intent(out)     :: pnode_id_map
-      integer                               :: i,j, global_node_id
+      integer, dimension(nPne,1), intent(out)  :: pnode_id_map
+      integer                                  :: i,j, global_node_id
 
 
       pelement_nodes = 0.0
@@ -170,13 +173,12 @@ module library
     function J2D( element_nodes, dN_dxi, dN_deta, Gp)
       implicit none
 
-      real, dimension(nUne,DimPr), intent(in)            :: element_nodes
+      integer, intent(in)                      :: Gp !esta variable se usara en el lazo principal con el numero de punto de gauss para evaluar las integrales elementales
+      real, dimension(nUne,DimPr), intent(in)  :: element_nodes
       double precision, dimension(nUne,size(gauss_points) ), intent(in) :: dN_dxi, dN_deta
-      integer, intent(in)                                  :: Gp !esta variable se usara en el lazo principal con el numero de punto de gauss para evaluar las integrales elementales
-      double precision, dimension(DimPr,nUne)                        :: Basis2D
-      double precision, dimension(1,nUne)                               :: Nxi, Neta
-      double precision, dimension(DimPr,DimPr)                   :: J2D
-
+      double precision, dimension(DimPr,nUne)  :: Basis2D
+      double precision, dimension(1,nUne)      :: Nxi, Neta
+      double precision, dimension(DimPr,DimPr) :: J2D
 
       !con estas instrucciones extraigo la columna de Nx como renglon y lo guardo en Nxi, Gp se
       !ira moviendo conforme la funcion J2D sea llamada en el lazo principal para cada elemento lo mismo para Neta con dN_deta
@@ -216,12 +218,12 @@ module library
 
       implicit none
 
-      double precision, dimension(DimPr,DimPr), intent(in)  :: A
-      double precision, dimension(DimPr,DimPr)              :: inv2x2
-
+      double precision, dimension(DimPr, DimPr), intent(in) :: A
+      double precision, dimension(DimPr, DimPr)             :: inv2x2
+      double precision, dimension(DimPr,DimPr)              :: cofactor
       double precision, parameter :: EPS = 1.0E-10
-      double precision :: det
-      double precision, dimension(2,2) :: cofactor
+      double precision            :: det
+      
 
 
       det =   A(1,1)*A(2,2) - A(1,2)*A(2,1)
@@ -229,7 +231,7 @@ module library
       if (abs(det) .le. EPS) then
         inv2x2 = 0.0D0
         return
-      end IF
+      end if
 
       cofactor(1,1) = +A(2,2)
       cofactor(1,2) = -A(2,1)
@@ -274,16 +276,14 @@ module library
 
       ! integer :: CompH
       ! integer, dimension(3,4) :: H
-      integer, dimension(3,4) :: CompH
+      integer, dimension(Dof ,2*DimPr) :: CompH
       CompH = 0
       CompH(1,1)=1;
       CompH(2,4)=1;
       CompH(3,2)=1;
       CompH(3,3)=1;
 
-
       ! CompH = H
-
       ! - - - * * * D U D A * * *
         !no puedo colocar direwctamente el nombre d ela funcion (la funcion misma) como variable global y debo pasarselo a otra variable y esa si ponerla como
         !vbariable global por eso hago el cambio de CompH = H y H esta como variable global. Es Asi?
@@ -297,11 +297,11 @@ module library
 
       implicit none
 
-      double precision, dimension(nUne,size(gauss_points) ), intent(in) :: dN_dxi, dN_deta
+      double precision, dimension(nUne,size(gauss_points)), intent(in) :: dN_dxi, dN_deta
       integer, intent(in) :: Gp
 
-      double precision, dimension(4, DimPr*nUne)  :: compBmat
-      double precision, dimension(1, nUne)    :: Nxi, Neta
+      double precision, dimension(2*DimPr, DimPr*nUne) :: compBmat
+      double precision, dimension(1, nUne)             :: Nxi, Neta
 
       integer::  i
 
@@ -329,13 +329,15 @@ module library
     subroutine AssembleK(K, ke, node_id_map, ndDOF)
 
       implicit none
-      real(8), dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(in out)  :: K !Global Stiffnes matrix
+      real(8), dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(in out)  :: K !Global Stiffnes matrix debe 
+      !                                                                               llevar inout por que entra como variable (IN) 
+      !                                                                                pero en esta funcion se modifica (out)
       real(8), dimension(2*nUne, 2*nUne), intent(in)   :: ke
       integer, dimension(nUne,1), intent(in)           :: node_id_map
       integer, intent(in)                              :: ndDOF 
       integer :: i, j, row_node, row, col_node, col !nodal Degrees of Freedom
 
-      !K debe llevar inout por que entra como variable (IN) pero en esta funcion se modifica (out)
+      !K 
 
       do i = 1, nUne
         row_node = node_id_map(i,1)
@@ -379,7 +381,7 @@ module library
         ! nUne   Ya declarado como variable global
       !- - - * * * * * * * * * - - -
 
-      double precision, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(out) :: A_K  !Global Stiffnes matrix
+      double precision, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes), intent(out) :: A_K  !Global Stiffnes matrix
       double precision, dimension(nUne,size(gauss_points,1)), intent(in)               :: dN_dxi, dN_deta
       double precision, allocatable, dimension(:,:)     :: Np
       double precision, dimension(2*nUne, 2*nUne)       :: ke
@@ -387,39 +389,37 @@ module library
       double precision                                  :: detJ
       double precision, dimension(2*DimPr, 2*DimPr)     :: Jb
       double precision, dimension(2*DimPr, DimPr*nUne)  :: B
-      double precision, dimension(3,DimPr*DimPr)        :: HJ
-      double precision, dimension(3,2*nUne)             :: HJB
-      double precision, dimension(2*nUne,3)             :: HJB_T
-      double precision, dimension(2*nUne,3)             :: part1
+      double precision, dimension(Dof,DimPr*DimPr)      :: HJ
+      double precision, dimension(Dof,2*nUne)           :: HJB
+      double precision, dimension(2*nUne,Dof)           :: HJB_T
+      double precision, dimension(2*nUne,Dof)           :: part1
       double precision, dimension(2*nUne,2*nUne)        :: part2
       double precision, dimension(2*nUne,2*nUne)        :: part3
-      real, dimension(3,4)                              :: H
-      real, dimension(3,3)                              :: cc, C   !Derived from elasticity formulation as Matertial matrix of Hook's Law
-      real(8), allocatable, dimension(:,:)              :: K12, K12_T!Lo puse allocatable por que marca error en la memoria 
+      double precision, dimension(nUne,DimPr)           :: part4
+      double precision, dimension(DimPr,1)              :: part5
+      double precision, dimension(nPne,1)               :: part6
+      double precision, dimension(1,nPne)               :: part7
+      double precision, dimension(2*nUne,nPne)          :: part8
+      double precision, dimension(2*nUne,nPne)          :: kep
+      double precision, dimension(DimPr,1)              :: A
+      double precision, dimension(4*nPne,1)             :: dN
+      real, dimension(Dof,2*DimPr)                      :: H
+      real, dimension(Dof,Dof)                          :: cc, C   !Derived from elasticity formulation as Matertial matrix of Hook's Law
+      real, allocatable, dimension(:,:)                 :: K12, K12_T!Lo puse allocatable por que marca error en la memoria 
       ! Array 'k12' at (1) is larger than limit set by '-fmax-stack-var-size=', moved from stack to static storage. This makes the procedure unsafe when called recursively, 
       !or concurrently from multiple threads. Consider using '-frecursive', or increase the '-fmax-stack-var-size=' limit, or change the code to use an ALLOCATABLE array. [-Wsurprising]
-      
-      double precision, dimension(16,4)                   :: kep
-      double precision, dimension(8,2)                    :: part4
-      double precision, dimension(2,1)                    :: part5
-      double precision, dimension(2,1)                    :: A
-      double precision, dimension(4,1)                    :: part6
-      double precision, dimension(1,4)                    :: part7
-      double precision, dimension(16,4)                   :: part8
-      double precision, dimension(4*nPne,1)               :: dN
-      integer, dimension(nUne,1)               :: node_id_map
-      real, dimension(nUne,DimPr)           :: element_nodes
-      integer, dimension(nPne,1)              :: pnode_id_map
-      real, dimension(nPne,DimPr)          :: pelement_nodes
-
-      integer                                 :: gp, ngp, e, i,j, row_node, row 
-      integer                                 :: col_node, pnode_id, col!, mrow, ncol
+      real, dimension(nUne,DimPr)   :: element_nodes
+      real, dimension(nPne,DimPr)   :: pelement_nodes
+      integer, dimension(nUne,1)    :: node_id_map
+      integer, dimension(nPne,1)    :: pnode_id_map
+      integer                       :: gp, ngp, e, i,j, row_node, row 
+      integer                       :: col_node, pnode_id, col!, mrow, ncol
       
 
       ngp = size(gauss_points,1) !TMB PODRIA SER VARIABLE PERMANENTE CON SAVE
 
       A_K  = 0.0
-      cc = reshape([2, 0, 0, 0, 2, 0, 0, 0, 1],[3,3])
+      cc = reshape([2, 0, 0, 0, 2, 0, 0, 0, 1],[Dof,Dof])
       C  = materials * cc
       H  = CompH()
       
@@ -427,7 +427,7 @@ module library
       do e = 1, Nelem
         ke = 0
         Jb = 0
-        call SetElementNodes(e, elements, nodes, element_nodes, node_id_map)
+        call SetElementNodes(e, element_nodes, node_id_map)
         !do-loop: compute element stiffness matrix ke
         do gp  = 1, ngp
           Jaco = J2D(element_nodes, dN_dxi, dN_deta, gp)
@@ -458,8 +458,8 @@ module library
 
       do e = 1, Nelem
         kep = 0.0
-        call SetElementNodes(e, elements, nodes, element_nodes, node_id_map)
-        call PreassureElemNods(e, pelements, nodes, pelement_nodes, pnode_id_map) !--Arreglar esto para que sea con p en todos los arguments
+        call SetElementNodes(e, element_nodes,  node_id_map)
+        call PreassureElemNods(e, pelement_nodes, pnode_id_map) !--Arreglar esto para que sea con p en todos los arguments
         ! for-loop: compute element stiffness matrix ke     
         do gp  = 1, ngp
           Jaco = J2D(element_nodes, dN_dxi, dN_deta, gp)
@@ -542,20 +542,20 @@ module library
       end do
 
       ! !========== Escribe en archivo la parte simetrica de la matriz global 
-      ! mrow = 2*n_nodes
-      ! ncol = n_pnodes
-      ! open(unit=1, file='K12_T.dat', ACTION="write", STATUS="replace")
-      ! do i=1,ncol
-      !   write(1, '(1000F14.7)')( K12_T(i,j) ,j=1,mrow)
-      ! end do
-      ! close(1)
-      ! !========== Escribir en archivo la matriz global
-      ! mrow = 2*n_nodes+n_pnodes 
-      ! ncol = 2*n_nodes+n_pnodes
-      ! open(unit=2, file='completeA_K.dat', ACTION="write", STATUS="replace")
-      ! do i=1,mrow
-      !   write(2, '(1000F14.7)')( A_K(i,j) ,j=1,ncol)
-      ! end do
+        ! mrow = 2*n_nodes
+        ! ncol = n_pnodes
+        ! open(unit=1, file='K12_T.dat', ACTION="write", STATUS="replace")
+        ! do i=1,ncol
+        !   write(1, '(1000F14.7)')( K12_T(i,j) ,j=1,mrow)
+        ! end do
+        ! close(1)
+        ! !========== Escribir en archivo la matriz global
+        ! mrow = 2*n_nodes+n_pnodes 
+        ! ncol = 2*n_nodes+n_pnodes
+        ! open(unit=2, file='completeA_K.dat', ACTION="write", STATUS="replace")
+        ! do i=1,mrow
+        !   write(2, '(1000F14.7)')( A_K(i,j) ,j=1,ncol)
+        ! end do
       ! close(2)
       
     end subroutine GlobalK
@@ -628,13 +628,13 @@ module library
       ! Set velocity (u) and preasure (p) boundary condition by penalty method
       ! - - - - - - - - - - * * * * * * * * * * - - - - - - - - - -
       implicit none
-      
-      real, dimension(NoBV,3), intent(in) :: Fbcsvp
-      double precision :: param, coeff
+                          !Dof
+      real, dimension(NoBV,Dof), intent(in) :: Fbcsvp
       double precision, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes),intent(in out) :: A_K  !Global Stiffnes matrix
       double precision, dimension(2*n_nodes+n_pnodes, 1), intent(in out) :: Sv
-      integer :: preasure_row, NoBV, i, component, node_id, pnode_id
-
+      double precision :: param, coeff
+      integer          :: preasure_row, NoBV, i, component, node_id, pnode_id
+      
       !Esencialmente la siguiente instruccion hace: A_K(1*2-1,:) = A_K(1,:) Es decir, obtene el valor maximo de
       !la primera fila de la matriz global K (A_K). No le veo el caso pero lo dejamos asi.
       param = maxval(A_K(int(Fbcsvp(1,1))*2-1,:))
@@ -643,15 +643,15 @@ module library
       preasure_row = 2*n_nodes
 
       do i =1, NoBV
-        node_id = int(Fbcsvp(i,1)) !se pone este int() pq la 1a y 2a col de Fbcsvp esta leida como integer pero 
+        node_id   = int(Fbcsvp(i,1)) !se pone este int() pq la 1a y 2a col de Fbcsvp esta leida como integer pero 
         component = int(Fbcsvp(i,2))!la matriz completa esta declarada como real en esta subroutina y en el main.
         if ( component .le. 2 ) then
           A_K(2*node_id-2+component, 2*node_id-2 +component) = coeff
-          Sv(2*node_id-2+component, 1) = Fbcsvp(i,3)*coeff 
+          Sv( 2*node_id-2+component, 1) = Fbcsvp(i,3)*coeff 
         else                                                     
           pnode_id = pnodes(node_id,2)
           A_K(preasure_row+pnode_id, preasure_row + pnode_id) = coeff
-          Sv(preasure_row+pnode_id,1) = Fbcsvp(i,3)*coeff 
+          Sv(preasure_row+pnode_id,1) = Fbcsvp(i,3)*coeff !el tres es por que en la columna 3 esta el valor de la condicon de forntera
         end if
       end do
 
