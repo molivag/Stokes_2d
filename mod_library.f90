@@ -49,11 +49,21 @@ module library
       character (len=*), intent (in) :: FileName
       real, dimension (1:NumRows, 1:NumCols), intent (out) :: Real_Array
 
-
       open (unit = UnitNum, file =FileName, status='old', action='read' , iostat = status)
+      
+      if(nUne .eq. 8)then
+        goto 5001
+      elseif(nUne .eq. 4)then
+        goto 5002
+      end if
 
       ! read in values
-      read(UnitNum,*) ((Real_Array(i,j), j=1,NumCols), i=1,NumRows)
+      5001 read(UnitNum,*) ((Real_Array(i,j), j=1,NumCols), i=1,NumRows)
+      goto 5003
+      5002 read(UnitNum,*) ((Real_Array(i,j), j=1,NumCols), i=2-1,NumRows-1,2)
+      
+      5003 continue
+      
       print *, "Status_Real_File ", status
 
       close (UnitNum)
