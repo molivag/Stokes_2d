@@ -65,9 +65,7 @@ module Isoparametric
       !de Gauss mas no las variables que contienen pesos y puntos de gauus.
     end subroutine GetQuadGauss
 
-
-
-  
+    ! = = = = = = = = = = = = = = = = = = = = =  = = = = = = 
     subroutine Quad8Nodes(gauss_points,  N, dN_dxi, dN_deta)
       implicit None
 
@@ -153,7 +151,6 @@ module Isoparametric
       end do
 
     end subroutine Quad8Nodes
-
 
     subroutine Quad4Nodes (gauss_points,  N, dN_dxi, dN_deta)
       implicit None

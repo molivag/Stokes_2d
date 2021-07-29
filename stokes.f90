@@ -5,12 +5,12 @@ program Stokes
 
   implicit none
   ! - - - - - - - - - - * * * Variables que se usan aqui en main * * * * * * * - - - - - - - - - -
-  integer                           :: NoBV, NoBVcol!, i, j ,mrow, ncol
+  integer                           :: NoBV, NoBVcol, i, j ,mrow, ncol
   real, allocatable, dimension(:,:) :: Fbcsvp
   external :: SLEEP
   !========== S O L V E R
   external                               :: mkl_dgetrfnp, dgetrf, dgetrs
-  integer                                :: S_m, S_n, S_lda, S_ldb, S_infoLU, S_nrhs !, S_infoSOL
+  integer                                :: S_m, S_n, S_lda, S_ldb, S_infoLU, S_nrhs , S_infoSOL
   integer, allocatable, dimension(:,:)   :: S_ipiv
   character*1                            :: S_trans
   ! - - - - - - - - - - - - - - - * * * Fin * * * * * * * - - - - - - - - - - - - - - - - 
@@ -21,16 +21,24 @@ program Stokes
   double precision, allocatable, dimension(:,:) :: Sv
 
   
-  call ReadIntegerFile(20,"elements.dat", 100,9, elements)  
-  call ReadRealFile(10,"nodes.dat", 341,3, nodes) !Para dreducir el numero de subrutinas, usar la sentencia option para 
+  call ReadIntegerFile(20,"elements.dat", Nelem, nUne + 1, elements)  
+  call ReadRealFile(10,"nodes.dat", n_nodes,3, nodes) !Para dreducir el numero de subrutinas, usar la sentencia option para 
   call ReadReal(30,"materials.dat", materials)    !Para dreducir el numero de subrutinas, usar la sentencia option para      
-  call ReadIntegerFile(40,"pnodes.dat", 341,2, pnodes)
-  call ReadIntegerFile(50,"pelements.dat", 100,5, pelements)
+  call ReadIntegerFile(40,"pnodes.dat", n_nodes,2, pnodes)
+  call ReadIntegerFile(50,"pelements.dat", Nelem,nPne + 1, pelements)
   
   call GetQuadGauss(ngp,ngp,gauss_points, gauss_weights, totGp)
   
   call Quad8Nodes(gauss_points, N, dN_dxi, dN_deta)
 
+  print*,size(nodes,1)
+  print*,shape(nodes)
+
+  do i=1,341
+    print'(100F10.7)', nodes(i,1)
+  end do  
+  
+  stop
 
   allocate(A_K(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes))
   call SetBounCond( NoBV, NoBVcol) !Esta funcion crea el archivo bcsVP.dat
@@ -81,35 +89,35 @@ program Stokes
   print*, '.'
   print*, '.'
   print*, '.'  
-  ! print*,'!========== SOLVING SYSTEM OF EQUATIONS '
-  ! call sleep(2)
-  ! call dgetrs( S_trans, S_n, S_nrhs, A_K, S_lda, S_ipiv, Sv, S_ldb, S_infoSOL )
-  ! if ( S_infoSOL .eq. 0 ) then
-  !   print*,'!========== SYSTEM SOLVED WITH STATUS', S_infoSOL, ', THE EXECUTION IS SUCCESSFUL.'
-  ! elseif(S_infoSOL .lt. 0 )then
-  !   print*,'!========== SYSTEM SOLVED WITH STATUS', S_infoSOL, 'THE',S_infoSOL,'-TH PARAMETER HAD AN ILLEGAL VALUE.'
-  ! endif
-  ! call sleep(1)
-  ! print*,' '
+  print*,'!========== SOLVING SYSTEM OF EQUATIONS '
+  call sleep(2)
+  call dgetrs( S_trans, S_n, S_nrhs, A_K, S_lda, S_ipiv, Sv, S_ldb, S_infoSOL )
+  if ( S_infoSOL .eq. 0 ) then
+    print*,'!========== SYSTEM SOLVED WITH STATUS', S_infoSOL, ', THE EXECUTION IS SUCCESSFUL.'
+  elseif(S_infoSOL .lt. 0 )then
+    print*,'!========== SYSTEM SOLVED WITH STATUS', S_infoSOL, 'THE',S_infoSOL,'-TH PARAMETER HAD AN ILLEGAL VALUE.'
+  endif
+  call sleep(1)
+  print*,' '
   
-  ! ! ========== Escribir en archivo la matriz global
-  ! mrow = 2*n_nodes+n_pnodes 
-  ! ncol = 2*n_nodes+n_pnodes
-  ! open(unit=70, file='A_K_LU.dat', ACTION="write", STATUS="replace ")
-  ! do i=1,2*n_nodes+n_pnodes 
-  !   write(70, '(1000F20.9)')( A_K(i,j) ,j=1,2*n_nodes+n_pnodes)
-  ! end do
-  ! close(70)
+  ! ========== Escribir en archivo la matriz global
+  mrow = 2*n_nodes+n_pnodes 
+  ncol = 2*n_nodes+n_pnodes
+  open(unit=70, file='A_K_LU.dat', ACTION="write", STATUS="replace ")
+  do i=1,2*n_nodes+n_pnodes 
+    write(70, '(1000F20.7)')( A_K(i,j) ,j=1,2*n_nodes+n_pnodes)
+  end do
+  close(70)
 
-  ! mrow = 2*n_nodes+n_pnodes 
-  ! ncol = 2*n_nodes+n_pnodes
-  ! open(unit=71, file='Sv.dat', ACTION="write", STATUS="replace ")
-  ! do i=1,2*n_nodes+n_pnodes 
-  !   write(71, '(1000F10.7)') Sv(i,1)
-  ! end do
-  ! close(71)
+  mrow = 2*n_nodes+n_pnodes 
+  ncol = 2*n_nodes+n_pnodes
+  open(unit=71, file='Sv.dat', ACTION="write", STATUS="replace ")
+  do i=1,2*n_nodes+n_pnodes 
+    write(71, '(1000F20.7)') Sv(i,1)
+  end do
+  close(71)
 
-  ! DEALLOCATE(A_K, Sv, S_ipiv)
+  DEALLOCATE(A_K, Sv, S_ipiv)
 
   
   DEALLOCATE( N)
