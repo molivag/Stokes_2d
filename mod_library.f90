@@ -35,7 +35,6 @@ module library
   ! integer, parameter        :: nPne = size(pelements,2)-1   !Number of preasure nodes in the eleement
   ! integer, parameter        :: DimPr = size(nodes,2)-1   !Dimension del problema
 
-  double precision, allocatable, dimension(:,:) :: gauss_points, gauss_weights !Verificar si debe ser global---> Si, se usa en la funcion ComputeK
 
   ! ! ! Fin de variables globales ! ! !
 
