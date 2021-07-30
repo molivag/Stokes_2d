@@ -31,22 +31,18 @@ program Stokes
   
   call Quad8Nodes(gauss_points, N, dN_dxi, dN_deta)
 
-  print*,size(nodes,1)
-  print*,shape(nodes)
-
-  do i=1,341
-    print'(100F10.7)', nodes(i,1)
-  end do  
-  
-  stop
-
   allocate(A_K(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes))
   call SetBounCond( NoBV, NoBVcol) !Esta funcion crea el archivo bcsVP.dat
   allocate( Fbcsvp(NoBV, NoBVcol) ) !Designo la memoria para la matriz de nodos con valor en la frontera
   call ReadMixFile(60,"Fbcsvp.dat", NoBV, NoBVcol, Fbcsvp)!Llamo el archivo de valores en la frontera y lo guardo en Fbcsvp
+  
 
   call GlobalK( A_K, dN_dxi, dN_deta)
 
+  DEALLOCATE( N)
+  DEALLOCATE( dN_dxi)
+  DEALLOCATE( dN_deta)
+  
   allocate(Sv(2*n_nodes+n_pnodes, 1))
   Sv = 0 !initializing source vector (Sv) 
   
@@ -55,7 +51,8 @@ program Stokes
   ! de frontera esta subrutina anterior usa como input Sv y A_K y los entrega de nuevo con las BCS aplicadas 
   call ApplyBoundCond(NoBV, Fbcsvp, A_K, Sv )
   !Despues de este ultimo call, obtenemos la matriz y vector global con condiciones de frontera
-  
+  DEALLOCATE( Fbcsvp)
+
   
   print*,'!==================== S O L V E R (L A P A C K) ====================!'
   S_m   = size(A_K,1)
@@ -74,30 +71,31 @@ program Stokes
   print*,'= = = = = = = = = = = = = = = = = = = = = = = ='
   print*,''
   
-  print*,'!========== INITIALIZING LU FACTORIZATION A = P*L*U'
+  print*,'!=== INITIALIZING LU FACTORIZATION A = P*L*U'
   ! call sleep(2)
   call dgetrf( S_m, S_n, A_K, S_lda, S_ipiv, S_infoLU )
   ! call mkl_dgetrfnp( S_m, S_n, A_K, S_lda, S_infoLU )
   if ( S_infoLU .eq. 0 ) then
-    print*,'!========== FACTORIZATION DONE WITH STATUS', S_infoLU, ', THE EXECUTION IS SUCCESSFUL.'
+    print*,'!===FACTORIZATION DONE WITH STATUS', S_infoLU, ', THE EXECUTION IS SUCCESSFUL.'
   elseif(S_infoLU .lt. 0 )then
-    print*,'!========== MATRIX FACTORIZED WITH STATUS', S_infoLU, 'THE',S_infoLU,'-TH PARAMETER HAD AN ILLEGAL VALUE.'
+    print*,'!===MATRIX FACTORIZED WITH STATUS', S_infoLU, 'THE',S_infoLU,'-TH PARAMETER HAD AN ILLEGAL VALUE.'
   elseif(S_infoLU .gt. 0 )then
-    print*,'!========== THE FACTORIZATION HAS BEEN COMPLETED, BUT U_',S_infoLU, 'IS EXACTLY SINGULAR.'
+    print*,'!===THE FACTORIZATION HAS BEEN COMPLETED, BUT U_',S_infoLU, 'IS EXACTLY SINGULAR.'
     print*, 'DIVISION BY 0 WILL OCCUR IF YOU USE THE FACTOR U FOR SOLVING A SYSTEM OF LINEAR EQUATIONS.'
   endif
   print*, '.'
   print*, '.'
   print*, '.'  
   print*,'!========== SOLVING SYSTEM OF EQUATIONS '
-  call sleep(2)
+  ! call sleep(2)
   call dgetrs( S_trans, S_n, S_nrhs, A_K, S_lda, S_ipiv, Sv, S_ldb, S_infoSOL )
+
   if ( S_infoSOL .eq. 0 ) then
-    print*,'!========== SYSTEM SOLVED WITH STATUS', S_infoSOL, ', THE EXECUTION IS SUCCESSFUL.'
+    print*,'!=== SYSTEM SOLVED WITH STATUS', S_infoSOL, ', THE EXECUTION IS SUCCESSFUL.'
   elseif(S_infoSOL .lt. 0 )then
-    print*,'!========== SYSTEM SOLVED WITH STATUS', S_infoSOL, 'THE',S_infoSOL,'-TH PARAMETER HAD AN ILLEGAL VALUE.'
+    print*,'!=== SYSTEM SOLVED WITH STATUS', S_infoSOL, 'THE',S_infoSOL,'-TH PARAMETER HAD AN ILLEGAL VALUE.'
   endif
-  call sleep(1)
+  ! call sleep(1)
   print*,' '
   
   ! ========== Escribir en archivo la matriz global
@@ -117,16 +115,14 @@ program Stokes
   end do
   close(71)
 
-  DEALLOCATE(A_K, Sv, S_ipiv)
 
-  
-  DEALLOCATE( N)
-  DEALLOCATE( dN_dxi)
-  DEALLOCATE( dN_deta)
-  DEALLOCATE( Fbcsvp)
-  DEALLOCATE( S_ipiv)
-  DEALLOCATE( A_K)
-  DEALLOCATE( Sv )
+  ! DEALLOCATE( N)
+  ! DEALLOCATE( dN_dxi)
+  ! DEALLOCATE( dN_deta)
+  ! DEALLOCATE( Fbcsvp)
+  ! DEALLOCATE( S_ipiv)
+  ! DEALLOCATE( A_K)
+  ! DEALLOCATE( Sv )
   
 
 end program Stokes
