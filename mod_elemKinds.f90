@@ -4,7 +4,8 @@ module Isoparametric
   ! ! ! Global variables related with Isoparametric module ! ! !
 
   integer :: totGp
-  
+  double precision, allocatable, dimension(:,:) :: gauss_points, gauss_weights !Verificar si debe ser global---> Si, se usa en la funcion ComputeK
+
   ! ! ! End of GLobal Variables ! ! !
   
   contains
@@ -19,7 +20,8 @@ module Isoparametric
       double precision, allocatable, dimension(:,:) :: w1, w2, w, x
       double precision, allocatable, dimension(:,:) :: xi, eta
 
-      allocate(gauss_points(fila*columna,2),gauss_weights(fila*columna,1))
+      allocate(gauss_points(fila*columna,2))
+      allocate(gauss_weights(fila*columna,1))
       allocate(w1(columna,1),w2(1,columna), x(columna,1))
       allocate(w(columna,columna))
       allocate(xi(size(gauss_points,1),1),eta(size(gauss_points,1),1))
