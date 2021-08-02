@@ -1,44 +1,7 @@
 module library
   use Parameters
   use Isoparametric
-  Implicit None
-
-  ! ! ! Aqui se declaran las variables globales ! ! !
-
-  ! integer, parameter :: DimPr     = 2     !Dimension del problema 
-  ! integer, parameter :: Nelem     = 100   !Number of elements
-  ! integer, parameter :: n_nodes   = 341   !Total number of velocity nodes
-  ! integer, parameter :: n_pnodes  = 121   !Total number of preasure nodes MAXVAL(pnodes,2)
-  ! integer, parameter :: nUne      = 8     !Number of velocity nodes in the element
-  ! integer, parameter :: nPne      = 4     !Number of preasure nodes in the element
-  ! integer, parameter :: Dof       = 3     !Degrees of fredoom: 2 for velocity + 1 one for preasure
-  ! integer, parameter :: ngp       = 2     !Number of Gauss points for quadrature  
-
-  ! integer, dimension(Nelem, nUne + 1) :: elements
-  ! integer, dimension(Nelem, nPne + 1) :: pelements  
-  ! real,    dimension(n_nodes, DimPr + 1) :: nodes
-  ! integer, dimension(n_nodes, 2)      :: pnodes
-  ! real                                :: materials
-
-
-
-  ! integer, dimension(100,9) :: elements
-  ! integer, dimension(100,5) :: pelements  
-  ! real,    dimension(341,3) :: nodes
-  ! integer, dimension(341,2) :: pnodes
-  ! real                      :: materials
-
-
-  ! integer, parameter        :: Nelem = size(elements,1)
-  ! integer, parameter        :: n_nodes = size(nodes,1)
-  ! integer, parameter        :: n_pnodes = 121 !Duda, como lo tomo desde el txt es decir   n_pnodes = maxval(pnodes(:,2))
-  ! integer, parameter        :: nUne = size(elements,2)-1    !Number of velocity nodes in the element
-  ! integer, parameter        :: nPne = size(pelements,2)-1   !Number of preasure nodes in the eleement
-  ! integer, parameter        :: DimPr = size(nodes,2)-1   !Dimension del problema
-
-
-  ! ! ! Fin de variables globales ! ! !
-
+ 
 
   contains
 
@@ -415,7 +378,7 @@ module library
       double precision, dimension(2*nUne,1)             :: dn
       real, dimension(Dof,2*DimPr)                      :: H
       real, dimension(Dof,Dof)                          :: cc, C   !Derived from elasticity formulation as Matertial matrix of Hook's Law
-      real, allocatable, dimension(:,:)                 :: K12, K12_T!Lo puse allocatable por que marca error en la memoria 
+      double precision, allocatable, dimension(:,:)     :: K12, K12_T!Lo puse allocatable por que marca error en la memoria 
       ! Array 'k12' at (1) is larger than limit set by '-fmax-stack-var-size=', moved from stack to static storage. This makes the procedure unsafe when called recursively, 
       !or concurrently from multiple threads. Consider using '-frecursive', or increase the '-fmax-stack-var-size=' limit, or change the code to use an ALLOCATABLE array. [-Wsurprising]
       real, dimension(nUne,DimPr)   :: element_nodes
@@ -464,7 +427,7 @@ module library
       allocate (K12(n_nodes*2,n_pnodes),K12_T(n_pnodes,n_nodes*2))
       K12 = 0
       
-      call Quad4Nodes(gauss_points, Np)
+      call ShapeFunctions(gauss_points, nPne, Np)
 
       do e = 1, Nelem
         kep = 0.0
