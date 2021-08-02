@@ -6,21 +6,19 @@ program Stokes
 
   implicit none
   ! - - - - - - - - - - * * * Variables que se usan aqui en main * * * * * * * - - - - - - - - - -
-  integer                           :: NoBV, NoBVcol, i, j ,mrow, ncol
-  real, allocatable, dimension(:,:) :: Fbcsvp
-  external :: SLEEP
-  !========== S O L V E R
+  double precision, allocatable, dimension(:,:) :: A_K
+  double precision, allocatable, dimension(:,:) :: N, dN_dxi, dN_deta
+  double precision, allocatable, dimension(:,:) :: Sv
+  real, allocatable, dimension(:,:)             :: Fbcsvp
+  integer                                       :: NoBV, NoBVcol, i, j ,mrow, ncol
+  external                                      :: SLEEP
+  
+  !========== S O L V E R ==========
   external                               :: mkl_dgetrfnp, dgetrf, dgetrs
   integer                                :: S_m, S_n, S_lda, S_ldb, S_infoLU, S_nrhs , S_infoSOL
   integer, allocatable, dimension(:,:)   :: S_ipiv
   character*1                            :: S_trans
   ! - - - - - - - - - - - - - - - * * * Fin * * * * * * * - - - - - - - - - - - - - - - - 
-  
-  ! integer :: i, j !Estas variables declaradas solo son de prueba para ir testeando la funcionalidad del codigom, se cambiaran por el bucle principal en compK
-  double precision, allocatable, dimension(:,:) :: A_K
-  double precision, allocatable, dimension(:,:) :: N, dN_dxi, dN_deta
-  double precision, allocatable, dimension(:,:) :: Sv
-
   
   call ReadIntegerFile(20,"elements.dat", Nelem, nUne + 1, elements)  
   call ReadRealFile(10,"nodes.dat", n_nodes,3, nodes) !Para dreducir el numero de subrutinas, usar la sentencia option para 
@@ -29,8 +27,8 @@ program Stokes
   call ReadIntegerFile(50,"pelements.dat", Nelem,nPne + 1, pelements)
   
   call GetQuadGauss(ngp,ngp,gauss_points, gauss_weights, totGp)
-  
-  call Quad8Nodes(gauss_points, N, dN_dxi, dN_deta)
+  ! call Quad8Nodes(gauss_points, N, dN_dxi, dN_deta)
+  call ShapeFunctions(gauss_points, nUne, N, dN_dxi, dN_deta)
 
   allocate(A_K(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes))
   call SetBounCond( NoBV, NoBVcol) !Esta funcion crea el archivo bcsVP.dat
