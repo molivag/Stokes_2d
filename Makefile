@@ -20,7 +20,7 @@ CFLAGS += -O0 -heap-arrays
 CFLAGS += -traceback -check all -CB -fp-stack-check
 
 #	source files
-SRCS = mod_elemKinds mod_library stokes
+SRCS = mod_parameters mod_elemKinds mod_library stokes
 
 OBJS = $(SRCS:=.o)
 
