@@ -53,6 +53,16 @@ program Stokes
 
 
   print*,' '
+
+  mrow = 2*n_nodes+n_pnodes 
+  ncol = 2*n_nodes+n_pnodes
+  open(unit=70, file='A_K_bv.dat', ACTION="write", STATUS="replace ")
+  do i=1,2*n_nodes+n_pnodes 
+    write(70, '(1000F20.9)')( A_K(i,j) ,j=1,2*n_nodes+n_pnodes)
+  end do
+  close(70)
+
+
   print*,'!==================== S O L V E R (L A P A C K) ====================!'
   S_m   = size(A_K,1)
   S_n   = size(A_K,2)
