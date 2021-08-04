@@ -5,6 +5,28 @@ module library
 
   contains
 
+    subroutine GeneralInfo( ) 
+    
+      print*, ' '
+      print*, '- - - - 2D Cavity Driven Flow Simulation - - - - '
+      print*, ' '
+      print*,'!==================== G E N E R A L   I N F O ====================!'
+      ! write(*,*)'= = = = = = = = = = = = = = = = = = = = = ='
+      write(*,*)'1.- Dimension del problema:      ', DimPr, ' |'
+      write(*,*)'2.- Tipo de elemento:            ','        ',ElemType,' |'
+      write(*,*)'3.- Numero total de elementos:   ', Nelem,' |'
+      write(*,*)'4.- Nodos totales de velocidad:  ', n_nodes, ' |'
+      write(*,*)'5.- Nodos totales de presion:    ', n_pnodes, ' |'
+      write(*,*)'6.- Grados de libertad por nodo: ', Dof, ' |'
+      write(*,*)'7.- Velocity nodes per element:  ', nUne, ' |'
+      write(*,*)'8.- Preasure nodes per element:  ', nPne, ' |'
+      write(*,*)'9.- Total of Gauss points:       ', totGp,' |'
+      ! write(*,*)'= = = = = = = = = = = = = = = = = = = = = ='    
+      write(*,*)' '
+      print*,'!============== F I L E   R E A D I N G   S T A T U S ============!'
+
+    endsubroutine GeneralInfo
+
     subroutine ReadRealFile(UnitNum, FileName, NumRows, NumCols, Real_Array)
       implicit none
 
@@ -46,7 +68,7 @@ module library
       ! read in values
       read(UnitNum,*) ((IntegerArray(i,j), j=1,NumCols), i=1,NumRows)
       print *, "Status_Int_File  ", status
-      print*, "Shape of ",FileName," is ", shape(IntegerArray)
+      ! print*, "Shape of ",FileName," is ", shape(IntegerArray)
       close (UnitNum)
 
     end subroutine ReadIntegerFile
@@ -334,26 +356,6 @@ module library
 
       implicit none
 
-      !- - - * * * DUDA * * * - - -
-
-        !Esto ya estaba como variable global, por que edebo declararlo de nuevo aqui
-        ! real                      :: materials
-        ! real, dimension(341,3)    :: nodes
-        ! integer, dimension(100,9) :: elements
-        ! real, dimension(341,2)    :: pnodes
-        ! integer, dimension(100,5) :: pelements
-
-        ! ----> Pide declararlo porque lo estoy ponioendo como argumento de entrada en la subrutina, sino lo pongo entonces dentro de la subrutina
-        ! lo toma de la parte global donde ha sido declarado
-
-
-
-        ! n_nodes               Ya declarado como variable global
-        ! n_pnodes              Ya declarado como variable global
-        ! Nelem            Ya declarado como variable global
-        ! nUne   Ya declarado como variable global
-      !- - - * * * * * * * * * - - -
-
       double precision, dimension(2*n_nodes+n_pnodes, 2*n_nodes+n_pnodes), intent(out) :: A_K  !Global Stiffnes matrix
       double precision, dimension(nUne,size(gauss_points,1)), intent(in)               :: dN_dxi, dN_deta
       double precision, allocatable, dimension(:,:)     :: Np
@@ -385,11 +387,9 @@ module library
       real, dimension(nPne,DimPr)   :: pelement_nodes
       integer, dimension(nUne,1)    :: node_id_map
       integer, dimension(nPne,1)    :: pnode_id_map
-      integer                       :: gp, ngp, e, i,j, row_node, row 
+      integer                       :: gp, e, i,j, row_node, row 
       integer                       :: col_node, pnode_id, col!, mrow, ncol
       
-
-      ngp = size(gauss_points,1) !TMB PODRIA SER VARIABLE PERMANENTE CON SAVE
 
       A_K  = 0.0
       cc = reshape([2, 0, 0, 0, 2, 0, 0, 0, 1],[Dof,Dof])
@@ -402,7 +402,7 @@ module library
         Jb = 0
         call SetElementNodes(e, element_nodes, node_id_map)
         !do-loop: compute element stiffness matrix ke
-        do gp  = 1, ngp
+        do gp  = 1, totGp
           Jaco = J2D(element_nodes, dN_dxi, dN_deta, gp)
           detJ = m22det(Jaco)
           Jinv = inv2x2(Jaco)
@@ -434,7 +434,7 @@ module library
         call SetElementNodes(e, element_nodes,  node_id_map)
         call PreassureElemNods(e, pelement_nodes, pnode_id_map) !--Arreglar esto para que sea con p en todos los arguments
         ! for-loop: compute element stiffness matrix ke     
-        do gp  = 1, ngp
+        do gp  = 1, totGp
           Jaco = J2D(element_nodes, dN_dxi, dN_deta, gp)
           detJ = m22det(Jaco)
           Jinv = inv2x2(Jaco)
@@ -629,9 +629,81 @@ module library
       end do
 
     end subroutine ApplyBoundCond
-  
+    
+
+    subroutine MKLfactoResult( S_infoLU )
+      implicit none
+
+      integer :: S_infoLU
+      character(len=32) :: text
+      character(len=46) :: text2
+
+      text  = '**FACTORIZATION DONE WITH STATUS'
+      text2 = '**THE FACTORIZATION HAS BEEN COMPLETED, BUT U_'
+      if ( S_infoLU .eq. 0 ) then
+        write(*, 101) text, S_infoLU, ', THE EXECUTION IS SUCCESSFUL.'
+      elseif(S_infoLU .lt. 0 )then
+        write(*, 102) text, S_infoLU, 'THE',S_infoLU,'-TH PARAMETER HAD AN ILLEGAL VALUE.'
+      elseif(S_infoLU .gt. 0 )then
+        write(*, 103) text2, S_infoLU,'IS EXACTLY SINGULAR.'
+        print*,'DIVISION BY 0 WILL OCCUR IF YOU USE THE FACTOR U FOR SOLVING A SYSTEM OF LINEAR EQUATIONS.'
+      endif
+      print*, ' '
+
+      101 format (A, 2x, I1, A)
+      102 format (A, 2x, I1, A, 2x, I1, A)
+      103 format (A, 2x, I1, A)
+    
+    end subroutine MKLfactoResult
 
 
+    subroutine MKLsolverResult( S_infoSOL )
+      implicit none
+
+      integer :: S_infoSOL
+      character(len=27) :: text
+      character(len=36) :: text2
+      text =  '**SYSTEM SOLVED WITH STATUS'
+      text2 = '-TH PARAMETER HAD AN ILLEGAL VALUE.'
+
+      if ( S_infoSOL .eq. 0 ) then
+        write(*,101) text, S_infoSOL, ', THE EXECUTION IS SUCCESSFUL.'
+      elseif(S_infoSOL .lt. 0 )then
+        write(*,102) text, S_infoSOL, 'THE',S_infoSOL, text2
+      endif
+      ! call sleep(1)
+      print*,' '
+
+      101 format (A, 2x, I1, A)
+      102 format (A, 2x, I1, A, 2x, I1, A)
+
+    end subroutine MKLsolverResult
+
+    subroutine writeMatrix(A_K, Sv)
+      implicit none
+
+      integer :: i, j, mrow, ncol
+      double precision, dimension(2*n_nodes+n_pnodes ,2*n_nodes+n_pnodes ), intent(in) :: A_K
+      double precision, dimension(2*n_nodes+n_pnodes ,1), intent(in) :: Sv
+
+      mrow = 2*n_nodes+n_pnodes 
+      ncol = 2*n_nodes+n_pnodes
+      open(unit=70, file='A_K_LU.dat', ACTION="write", STATUS="replace")
+
+      do i=1,2*n_nodes+n_pnodes 
+        write(70, '(1000F20.7)')( A_K(i,j) ,j=1,2*n_nodes+n_pnodes)
+      end do
+      close(70)
+    
+      open(unit=71, file='Sv.dat', ACTION="write", STATUS="replace ")
+      do i=1,2*n_nodes+n_pnodes 
+        write(71, '(1000F20.7)') Sv(i,1)
+      end do
+      close(71)
+
+    end subroutine writeMatrix
+
+    
   !Fin de contains
 
 
