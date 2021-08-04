@@ -4,11 +4,11 @@ module Isoparametric
 
   contains
   
-    subroutine GetQuadGauss(fila, columna, gauss_points, gauss_weights, totGp)!, xi, eta)
+    subroutine GetQuadGauss(fila, columna, gauss_points, gauss_weights)!, xi, eta)
       implicit none
 
       integer               :: i,j,k
-      integer, intent(out)  :: totGp
+      ! integer, intent(out)  :: totGp
       integer, intent(in)   :: fila, columna
       double precision, allocatable, dimension(:,:),intent(out) :: gauss_points, gauss_weights
       double precision, allocatable, dimension(:,:) :: w1, w2, w, x
@@ -20,7 +20,8 @@ module Isoparametric
       allocate(w(columna,columna))
       allocate(xi(size(gauss_points,1),1),eta(size(gauss_points,1),1))
 
-      totGp = size(gauss_points,1) ! y declarar totGp con SAVE para tener siempre el valor de la variable totGp 
+      ! totGp = size(gauss_points,1) ! y declarar totGp con SAVE para tener siempre el valor de la variable totGp 
+      print*, 'Gauss Points desde module Isoparametric',totGp
       gauss_points = 0
       gauss_weights = 0
 
@@ -62,7 +63,7 @@ module Isoparametric
     end subroutine GetQuadGauss
 
     ! = = = = = = = = = = = = = = = = = = = = =  = = = = = = 
-    subroutine ShapeFunctions(gauss_points, Nne,  N, dN_dxi, dN_deta )
+    subroutine ShapeFunctions(gauss_points, Nne,  N, dN_dxi, dN_deta )  
       implicit None
 
       double precision, dimension(:,:), intent(in)               :: gauss_points
@@ -77,7 +78,6 @@ module Isoparametric
       
       allocate( N(Nne,totGp) )
       N = 0.0
-
       xi_vector  = gauss_points(:,1)     ! xi-coordinate of point j
       eta_vector = gauss_points(:,2)
 
